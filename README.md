@@ -1,4 +1,4 @@
-# sound_sensor
+# Sound Sensor
 Wireless touch sensor soundboard project for the Society of Unconventional Drummers
 
 # How to run:
