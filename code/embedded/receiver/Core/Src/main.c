@@ -68,7 +68,8 @@ static void usb_wait_configured(void) {
 }
 
 static void send_bytes(const uint8_t *buf, uint16_t len) {
-	while (CDC_Transmit_FS((uint8_t *) buf, len) == USBD_BUSY);
+	CDC_Transmit_FS((uint8_t *) buf, len);
+//	while (CDC_Transmit_FS((uint8_t *) buf, len) == USBD_BUSY);
 }
 /* USER CODE END 0 */
 
@@ -105,6 +106,8 @@ int main(void)
   MX_USB_DEVICE_Init();
   /* USER CODE BEGIN 2 */
   usb_wait_configured();
+  // Turn LED off
+  HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 
   char* msg = "Hello World!";
   int old_button_held = HAL_GPIO_ReadPin(GPIOA, GPIO_PIN_0);
@@ -123,8 +126,10 @@ int main(void)
   		// Edge detected
   		// TODO: add 5ms debounce
   		if (button_held == GPIO_PIN_RESET) {
+  			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
   			send_bytes(note_on, sizeof note_on);
   		} else {
+  			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
   			send_bytes(note_off, sizeof note_off);
   		}
   		old_button_held = button_held;
