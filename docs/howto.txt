@@ -1,0 +1,20 @@
+Device not found:
+
+Caused by SWJ disabled in main
+Build and get .elf
+Open STM32CubeProgrammer
+Hold reset button (left), let reset
+Get default connection settings ready
+With good timing, let go of reset and connect
+Should be successful. Otherwise, connect under hot plug and
+try other stuff
+
+
+Installation:
+
+STM32Cube Programmer
+
+ST-Link Driver
+
+VCP driver:
+https://www.st.com/en/development-tools/stsw-stm32102.html#get-software
