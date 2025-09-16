@@ -5,7 +5,7 @@ Build and get .elf
 Open STM32CubeProgrammer
 Hold reset button (left), let reset
 Get default connection settings ready
-With good timing, let go of reset and connect
+With good timing, connect and before error, let go of reset
 Should be successful. Otherwise, connect under hot plug and
 try other stuff
 
