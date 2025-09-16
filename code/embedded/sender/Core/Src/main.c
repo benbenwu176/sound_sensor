@@ -41,8 +41,10 @@
 #define MPR121_REG_DEBOUNCE					0x5B
 #define MPR121_REG_ELE0_T						0x41 // ELE0_R=0x42, ELE1_T=0x43, ...
 
-#define MPR121_TOUCH_THR_DEFAULT 		0x0F // TODO: fine-tune
-#define MPR121_RELEASE_THR_DEFAULT 	0x0A // TODO: fine-tune
+#define MPR121_TOUCH_THR_DEFAULT 		0x06 // TODO: fine-tune
+#define MPR121_RELEASE_THR_DEFAULT 	0x03 // TODO: fine-tune
+#define MPR121_DEBOUNCE							0x00 // TODO: fine-tune
+#define MPR121_RUN_MODE							0x8C // TODO: fine-tune
 
 volatile uint8_t g_mpr_irq_pending = 0;
 volatile uint16_t g_touched_mask;
@@ -115,10 +117,10 @@ static bool MPR121_Init(void) {
 	}
 
 	// Set debounce
-	if (MPR121_Write8(MPR121_REG_DEBOUNCE, 0x11) != HAL_OK) {return false;}
+	if (MPR121_Write8(MPR121_REG_DEBOUNCE, MPR121_DEBOUNCE) != HAL_OK) {return false;}
 
 	// Set run mode
-	if (MPR121_Write8(MPR121_REG_ECR, 0x8C) != HAL_OK) {return false;}
+	if (MPR121_Write8(MPR121_REG_ECR, MPR121_RUN_MODE) != HAL_OK) {return false;}
 
 	return true;
 }
@@ -157,15 +159,8 @@ int main(void)
   MX_SPI1_Init();
   /* USER CODE BEGIN 2 */
   if (!MPR121_Init()) {
-  	uint8_t found = 0;
-  	for (uint8_t addr = 1; addr <= 128; addr++) {
-  		if (HAL_I2C_IsDeviceReady(&hi2c1, (addr << 1), 3, 100) == HAL_OK) {
-  			found = addr;
-  		}
-  	}
-
   	// Rapid blink on MPR121 init failure
-  	while (1 && !found) {
+  	while (1) {
   		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
   		HAL_Delay(100);
   	}
