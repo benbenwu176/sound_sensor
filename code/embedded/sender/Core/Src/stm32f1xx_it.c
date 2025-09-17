@@ -58,6 +58,8 @@
 
 /* USER CODE BEGIN EV */
 extern volatile uint8_t g_mpr_irq_pending;
+
+extern void NRF_ClearIRQ(void);
 /* USER CODE END EV */
 
 /******************************************************************************/
@@ -229,7 +231,11 @@ void EXTI9_5_IRQHandler(void)
 /* USER CODE BEGIN 1 */
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   if (GPIO_Pin == GPIO_PIN_5) {
+  	// MPR121 IRQ
   	g_mpr_irq_pending = 1;
+  } else if (GPIO_Pin == GPIO_PIN_0) {
+  	// nRF24 IRQ
+//  	NRF_ClearIRQ(); // Done implicitly in STM32 IRQ handler
   }
 }
 /* USER CODE END 1 */
