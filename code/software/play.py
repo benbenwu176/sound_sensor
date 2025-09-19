@@ -2,6 +2,8 @@ import time
 import serial
 import fluidsynth
 
+
+
 # Init FluidSynth sampler
 fs = fluidsynth.Synth(samplerate=48000, gain=0.5)
 fs.start()
@@ -29,7 +31,9 @@ def main():
         # Consume complete 3-byte MIDI messages (no running status)
         while len(buf) >= 3:
             header, midi, vel = buf[0], buf[1], buf[2]
+            # TODO: parse into notes
             del buf[:3]
+            header, midi, vel = 0x10, 60, 127
             cmd = (header & 0xF0) >> 4 # First hex char of header = on or off
             channel = header & 0x0F # Second hex char of header = channel val
             
