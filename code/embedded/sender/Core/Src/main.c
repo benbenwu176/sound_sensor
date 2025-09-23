@@ -95,8 +95,8 @@ static uint16_t s_prev_mask = 0;
 #endif
 
 // Accommodate for 9 devices total
-#if (DEVICE_ID < 0) || (DEVICE_ID > 8)
-#error "DEVICE_ID must be in range [0, 8]"
+#if (DEVICE_ID < 0) || (DEVICE_ID > 7)
+#error "DEVICE_ID must be in range [0, 7]"
 #endif
 
 // Channel split: 0-3 on CH 70, 4... on CH 85

@@ -1,0 +1,6 @@
+../Drivers/STM32F3xx_HAL_Driver/Inc/stm32f3xx_ll_usart.h:1586:22:LL_USART_SetBaudRate	2
+../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_ll_usart.c:149:13:LL_USART_DeInit	6
+../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_ll_usart.c:221:13:LL_USART_Init	9
+../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_ll_usart.c:345:6:LL_USART_StructInit	1
+../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_ll_usart.c:369:13:LL_USART_ClockInit	3
+../Drivers/STM32F3xx_HAL_Driver/Src/stm32f3xx_ll_usart.c:428:6:LL_USART_ClockStructInit	1

@@ -1,0 +1,70 @@
+{
+  "numPlayers": 6,
+  "playerHoldLimits": [
+    2,
+    2,
+    2,
+    2,
+    2,
+    1
+  ],
+  "playerSwitchTimes": [
+    2,
+    2,
+    2,
+    2,
+    2,
+    2
+  ],
+  "playerOneHandedRolls": [
+    false,
+    false,
+    false,
+    false,
+    false,
+    false
+  ],
+  "playerExcludeRanges": [
+    [],
+    [],
+    [],
+    [],
+    [],
+    []
+  ],
+  "whackerQuantities": [
+    2,
+    3,
+    5,
+    3,
+    5,
+    5,
+    3,
+    5,
+    3,
+    5,
+    3,
+    5,
+    7,
+    4,
+    4,
+    4,
+    4,
+    4,
+    4,
+    5,
+    4,
+    4,
+    4,
+    4,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2,
+    2
+  ],
+  "gamble": false
+}
