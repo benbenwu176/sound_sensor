@@ -9,7 +9,7 @@ fs = fluidsynth.Synth(samplerate=48000, gain=0.5)
 fs.start()
 sf_id = fs.sfload("usb.sf2")
 fs.program_select(0, sf_id, 0, 0)
-input = serial.Serial("COM5", 115200, timeout=0.1)
+input = serial.Serial("COM6", 115200, timeout=0.1)
 
 # Play test chords
 def play_test():
@@ -47,6 +47,7 @@ def main():
             
 # Run main loop
 main()
+# play_test()
 
 # Delete after done
 fs.delete()

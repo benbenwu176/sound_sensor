@@ -59,6 +59,20 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 
 /* USER CODE BEGIN Private defines */
+// GPIO Pins
+#define NRF1_CE_GPIO_Port GPIOA
+#define NRF1_CE_Pin       GPIO_PIN_4
+#define NRF1_CSN_GPIO_Port GPIOA
+#define NRF1_CSN_Pin       GPIO_PIN_3
+#define NRF1_IRQ_GPIO_Port GPIOB
+#define NRF1_IRQ_Pin GPIO_PIN_0
+
+#define NRF2_CE_GPIO_Port GPIOB
+#define NRF2_CE_Pin       GPIO_PIN_11
+#define NRF2_CSN_GPIO_Port GPIOB
+#define NRF2_CSN_Pin       GPIO_PIN_12
+#define NRF2_IRQ_GPIO_Port GPIOB
+#define NRF2_IRQ_Pin GPIO_PIN_10
 
 /* USER CODE END Private defines */
 

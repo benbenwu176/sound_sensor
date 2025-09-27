@@ -49,30 +49,6 @@
 #define MPR121_RUN_MODE							0x8C // TODO: fine-tune
 
 /* ----- nRF24 definitions ----- */
-#define NRF_CMD_R_REGISTER 					0x00
-#define NRF_CMD_W_REGISTER 					0x20
-#define NRF_CMD_W_TX_PAYLOAD				0xA0
-#define NRF_CMD_FLUSH_TX						0xE1
-#define NRF_CMD_NOP									0xFF
-
-#define NRF_REG_CONFIG							0x00
-#define NRF_REG_EN_AA								0x01
-#define NRF_REG_EN_RXADDR						0x02
-#define NRF_REG_SETUP_AW						0x03
-#define NRF_REG_SETUP_RETR					0x04
-#define NRF_REG_RF_CH								0x05
-#define NRF_REG_RF_SETUP						0x06
-#define NRF_REG_STATUS							0x07
-#define NRF_REG_RX_ADDR_P0					0x0A
-#define NRF_REG_TX_ADDR							0x10
-#define NRF_REG_DYNPD								0x1C
-#define NRF_REG_FEATURE							0x1D
-
-// Status bits
-#define NRF_STATUS_RX_DR						(1U << 6)
-#define NRF_STATUS_TX_DS						(1U << 5)
-#define NRF_STATUS_MAX_RT						(1U << 4)
-
 #define NRF_CE_GPIO_Port 						GPIOA
 #define NRF_CE_Pin									GPIO_PIN_4
 #define NRF_CSN_GPIO_Port 					GPIOA
@@ -125,7 +101,6 @@ static const uint8_t NRF_ADDR[5] = {ADDR_B0, ADDR_B1, ADDR_B2, ADDR_B3, ADDR_B4}
 
 /* Private variables ---------------------------------------------------------*/
 I2C_HandleTypeDef hi2c1;
-
 SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN PV */
@@ -148,14 +123,18 @@ static bool MPR121_Init(void);
 
 /* ----- nRF24 prototypes ----- */
 static void NRF_Init_TX(void);
+static bool NRF_Send(const uint8_t *payload, uint8_t len);
 
-static bool NRF_Send(const uint8_t *payload, uint8_t len)
-{
-    extern nrf24_t radio; // ensure same instance
-    bool acked=false;
-    return nrf24_ptx_send(&radio, payload, len, &acked);
+/* USER CODE END PFP */
+
+/* Private user code ---------------------------------------------------------*/
+/* USER CODE BEGIN 0 */
+
+/* ----- MPR121 functions ----- */
+// Write a value to a register on the MPR121 board
+static HAL_StatusTypeDef MPR121_Write8(uint8_t reg, uint8_t val) {
+	return HAL_I2C_Mem_Write(&hi2c1, MPR121_ADDR, reg, I2C_MEMADD_SIZE_8BIT, &val, 1, 50);
 }
-
 
 // Read a register on MPR121 board
 static HAL_StatusTypeDef MPR121_ReadN(uint8_t reg, uint8_t *buf, uint16_t n) {
@@ -189,58 +168,6 @@ static bool MPR121_Init(void) {
 	return true;
 }
 
-
-/* ----- nRF24 functions ----- */
-// Helpers
-static inline void CSN_L(void) { HAL_GPIO_WritePin(NRF_CSN_GPIO_Port, NRF_CSN_Pin, GPIO_PIN_RESET);}
-static inline void CSN_H(void) { HAL_GPIO_WritePin(NRF_CSN_GPIO_Port, NRF_CSN_Pin, GPIO_PIN_SET);}
-static inline void CE_L(void) {HAL_GPIO_WritePin(NRF_CE_GPIO_Port,  NRF_CE_Pin,  GPIO_PIN_RESET);}
-static inline void CE_H(void) {HAL_GPIO_WritePin(NRF_CE_GPIO_Port,  NRF_CE_Pin,  GPIO_PIN_SET);}
-
-static uint8_t spi_txrx(uint8_t b) {
-	uint8_t o = 0;
-	HAL_SPI_TransmitReceive(&hspi1, &b, &o, 1, 50);
-	return o;
-}
-
-static void nrf_write_reg(uint8_t reg, uint8_t val) {
-	CSN_L();
-	spi_txrx(NRF_CMD_W_REGISTER | (reg & 0x1F));
-	spi_txrx(val);
-	CSN_H();
-}
-
-static void nrf_write_buf(uint8_t reg, const uint8_t *buf, uint8_t len) {
-	CSN_L();
-	spi_txrx(NRF_CMD_W_REGISTER | (reg & 0x1F));
-	for (uint8_t i = 0; i < len; i++) {
-		spi_txrx(buf[i]);
-	}
-	CSN_H();
-}
-
-static uint8_t nrf_read_status(void) {
-	CSN_L();
-	uint8_t s = spi_txrx(NRF_CMD_NOP);
-	CSN_H();
-	return s;
-}
-
-static void nrf_flush_tx(void) {
-	CSN_L();
-	spi_txrx(NRF_CMD_FLUSH_TX);
-	CSN_H();
-}
-
-static void nrf_write_payload(const uint8_t *buf, uint8_t len) {
-	CSN_L();
-	spi_txrx(NRF_CMD_W_TX_PAYLOAD);
-	for (uint8_t i = 0; i < len; i++) {
-		spi_txrx(buf[i]);
-	}
-	CSN_H();
-}
-
 // nRF24 initial TX configuration
 
 static void NRF_Init_TX(void)
@@ -265,23 +192,12 @@ static void NRF_Init_TX(void)
     *(volatile nrf24_t*)&radio = radio;
 }
 
-
-static void NRF_ClearIRQ(void) {
-	// Write 1s to clear MAX_RT, TX_DS, RX_DR
-	nrf_write_reg(NRF_REG_STATUS, NRF_STATUS_MAX_RT | NRF_STATUS_TX_DS | NRF_STATUS_RX_DR);
-}
-
 // Queue a payload and pulse CE to transmit
-
 static bool NRF_Send(const uint8_t *payload, uint8_t len)
 {
     extern nrf24_t radio; // ensure same instance
     bool acked=false;
     return nrf24_ptx_send(&radio, payload, len, &acked);
-}
-
-
-e;
 }
 
 static void SendTouchChanges(uint16_t new_mask) {
@@ -357,8 +273,7 @@ int main(void)
 
   /* Infinite loop */
   /* USER CODE BEGIN WHILE */
-  while (1)
-  {
+  while (1) {
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
@@ -371,7 +286,6 @@ int main(void)
   		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, (mask ? GPIO_PIN_RESET: GPIO_PIN_SET));
   		SendTouchChanges(mask);
   	}
-//  	HAL_Delay(5);
   }
   /* USER CODE END 3 */
 }
