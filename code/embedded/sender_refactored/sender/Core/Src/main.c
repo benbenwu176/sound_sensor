@@ -104,7 +104,13 @@ I2C_HandleTypeDef hi2c1;
 SPI_HandleTypeDef hspi1;
 
 /* USER CODE BEGIN PV */
-static nrf24_t radio;
+static nrf24_t radio = {
+		.hspi    = &hspi1,
+		.ce_port = NRF_CE_GPIO_Port, .ce_pin = NRF_CE_Pin,
+		.csn_port= NRF_CSN_GPIO_Port, .csn_pin= NRF_CSN_Pin,
+		.irq_port= NULL, .irq_pin = 0,
+		.fixed_pld_len = TOUCH_PKT_LEN
+};
 
 /* USER CODE END PV */
 
@@ -172,15 +178,6 @@ static bool MPR121_Init(void) {
 
 static void NRF_Init_TX(void)
 {
-    nrf24_t n = {
-        .hspi    = &hspi1,
-        .ce_port = NRF_CE_GPIO_Port, .ce_pin = NRF_CE_Pin,
-        .csn_port= NRF_CSN_GPIO_Port, .csn_pin= NRF_CSN_Pin,
-        .irq_port= NULL, .irq_pin = 0,
-        .fixed_pld_len = TOUCH_PKT_LEN
-    };
-    radio = n;
-
     // Build address: E7 E7 E7 E7 <LSB>
     uint8_t addr[5] = {0xE7,0xE7,0xE7,0xE7, ADDR_LAST};
 
@@ -268,7 +265,8 @@ int main(void)
 
   // Turn LED off
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-
+  uint8_t message[] = {1, 1};
+  bool acked = false;
   /* USER CODE END 2 */
 
   /* Infinite loop */
@@ -277,15 +275,17 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-  	if (g_mpr_irq_pending) {
-  		g_mpr_irq_pending = 0;
-  		uint16_t mask = MPR121_ReadTouchedMask();
-  		g_touched_mask = mask;
-
-  		// Light the LED while any electrode is touched
-  		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, (mask ? GPIO_PIN_RESET: GPIO_PIN_SET));
-  		SendTouchChanges(mask);
-  	}
+//  	if (g_mpr_irq_pending) {
+//  		g_mpr_irq_pending = 0;
+//  		uint16_t mask = MPR121_ReadTouchedMask();
+//  		g_touched_mask = mask;
+//
+//  		// Light the LED while any electrode is touched
+//  		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, (mask ? GPIO_PIN_RESET: GPIO_PIN_SET));
+//  		SendTouchChanges(mask);
+//  	}
+  	nrf24_ptx_send(&radio, message, 2, &acked);
+  	HAL_Delay(100);
   }
   /* USER CODE END 3 */
 }

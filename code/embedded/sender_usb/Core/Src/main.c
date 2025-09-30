@@ -44,8 +44,8 @@
 #define MPR121_REG_DEBOUNCE					0x5B
 #define MPR121_REG_ELE0_T						0x41 // ELE0_R=0x42, ELE1_T=0x43, ...
 
-#define MPR121_TOUCH_THR_DEFAULT 		0x03 // TODO: fine-tune
-#define MPR121_RELEASE_THR_DEFAULT 	0x01 // TODO: fine-tune
+#define MPR121_TOUCH_THR_DEFAULT 		0x08 // TODO: fine-tune
+#define MPR121_RELEASE_THR_DEFAULT 	0x06 // TODO: fine-tune
 #define MPR121_DEBOUNCE							0x00 // TODO: fine-tune
 #define MPR121_RUN_MODE							0x8C // TODO: fine-tune
 

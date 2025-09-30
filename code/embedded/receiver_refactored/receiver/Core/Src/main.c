@@ -37,12 +37,20 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-// USB packet is always 3 bytes: {addrLSB, sensorId(0..11), state(0/1)}
-static inline void usb_send3(uint8_t b0, uint8_t b1, uint8_t b2)
-{
-  uint8_t pkt[3] = { b0, b1, b2 };
-  while (CDC_Transmit_FS(pkt, 3) == USBD_BUSY) {;}
-}
+// GPIO Pins
+#define NRF1_CE_GPIO_Port GPIOA
+#define NRF1_CE_Pin       GPIO_PIN_4
+#define NRF1_CSN_GPIO_Port GPIOA
+#define NRF1_CSN_Pin       GPIO_PIN_3
+#define NRF1_IRQ_GPIO_Port GPIOB
+#define NRF1_IRQ_Pin GPIO_PIN_0
+
+#define NRF2_CE_GPIO_Port GPIOB
+#define NRF2_CE_Pin       GPIO_PIN_11
+#define NRF2_CSN_GPIO_Port GPIOB
+#define NRF2_CSN_Pin       GPIO_PIN_12
+#define NRF2_IRQ_GPIO_Port GPIOB
+#define NRF2_IRQ_Pin GPIO_PIN_10
 
 /* USER CODE END PD */
 
@@ -196,7 +204,7 @@ int main(void)
   	}
   	if (got) {
   		// Transmit USB packet
-  		test_send();
+//  		test_send();
 		}
   }
 

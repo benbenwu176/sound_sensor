@@ -1,58 +1,6 @@
-#define WIN32_LEAN_AND_MEAN
-#include <windows.h>
-#include <stdio.h>
-#include <stdint.h>
-#include <stdbool.h>
-#include <stdlib.h>
-#include <string.h>
+#include "main.h"
 
-#include <fluidsynth.h>
-
-#define NUM_DEVICES 8
-#define SENSORS_PER_DEVICE 6
-#define MAX_COM_PORTS 32
-#define MAX_PATH_LEN 1024
-
-// ---------- FluidSynth globals ----------
-static fluid_settings_t* g_settings = NULL;
-static fluid_synth_t*    g_synth    = NULL;
-static fluid_audio_driver_t* g_adriver = NULL;
-
-// Protect FluidSynth calls (simple, safe)
-static CRITICAL_SECTION g_synthLock;
-
-// Track which notes are currently active (to avoid repeats)
-static volatile LONG g_running = 1;
-static bool g_active[NUM_DEVICES][SENSORS_PER_DEVICE] = {0};
-
-// Per-channel (device) soundfont/program config
-typedef struct {
-    char sf2_path[MAX_PATH_LEN]; // soundfont file
-    int  bank;                   // usually 0
-    int  program;                // 0-127, default 0
-    int  sfont_id;               // set at runtime
-} ChannelConfig;
-
-static ChannelConfig g_chan[NUM_DEVICES];
-
-// Default note map: 8 devices × 6 sensors → MIDI notes
-// Tune as you like; kept within 0..127.
-static int g_note_map[NUM_DEVICES][SENSORS_PER_DEVICE] = {
-/* dev 0 */ {65, 67, 69, 72, 74, 76}, // victoria: F, G, A, C, D, E (unused)
-/* dev 1 */ {69, 72, 74, 76, 77, 81}, // edwin: A, C, D, E, F, A
-/* dev 2 */ {65, 67, 69, 72, 74, 76}, // yuktha F, G, A, C, D, E (unused)
-/* dev 3 */ {67, 67, 67, 67, 67, 67}, // jessica 67
-/* dev 4 */ {41, 43, 45, 48, 50, 52}, // trang F, G, A, C, D, E (unused)
-/* dev 5 */ {41, 43, 45, 48, 50, 52}, // maddie F, G, A, C, D, E (unused)
-/* dev 6 */ {36, 43, 47, 50, 46, 49}, // mathew Bass, Low Floor, Low-Mid, High, Splash, Crash
-/* dev 7 */ {36, 38, 54, 56, 42, 51}  // audorii Bass, Snare, Tambo, Cowbell, Hi-hat, Ride
-};
-
-// ----------------- COM port handling -----------------
-
-typedef struct {
-    char port_name[64]; // e.g., "COM3" (we'll convert to \\.\COM3)
-} SerialThreadArgs;
+/* ----- SERIAL INPUT ----- */
 
 static BOOL WINAPI ConsoleCtrlHandler(DWORD ctrlType) {
     if (ctrlType == CTRL_C_EVENT || ctrlType == CTRL_BREAK_EVENT ||
@@ -186,7 +134,7 @@ static DWORD WINAPI serial_thread_proc(LPVOID param) {
     uint8_t pkt[3];
     while (g_running) {
         if (!read_exact(h, pkt, 3)) {
-            // likely a timeout—just continue while running
+            // likely a timeout — just continue while running
             continue;
         }
         int device_id = pkt[0];
@@ -199,21 +147,20 @@ static DWORD WINAPI serial_thread_proc(LPVOID param) {
             // ignore bad packet
             continue;
         }
-
+        
         int midi_chan = device_id;
-        int note      = g_note_map[device_id][sensor_id];
+        Device* dev = devices[device_id];
+        Note* note = dev->notes[sensor_id];
 
-        bool was = g_active[device_id][sensor_id];
-        bool now = (state == 1);
-
-        if (now && !was) {
-            fs_note_on(midi_chan, note, 100); // velocity 100 (tweak if desired)
-            g_active[device_id][sensor_id] = true;
-        } else if (!now && was) {
-            fs_note_off(midi_chan, note);
-            g_active[device_id][sensor_id] = false;
+        if (state == 1) {
+            // note on
+            fs_note_on(midi_chan, note->pitch, note->velocity + dev->velocity_offset);
+        } else if (state == 0) {
+            // note off
+            if (note->holdable) {
+                fs_note_off(midi_chan, note->pitch);
+            }
         }
-        // If state == was, do nothing (debounced)
     }
 
     CloseHandle(h);
@@ -244,10 +191,12 @@ static int fluidsynth_init(const char* preferred_driver) {
     fluid_settings_setint(g_settings, "audio.periods", 2);
     fluid_settings_setint(g_settings, "audio.period-size", 128);
 
-    fluid_settings_setnum(g_settings, "synth.reverb.roomsize", 0.9);
-    fluid_settings_setnum(g_settings, "synth.reverb.damp",    0.5);
+    // fluid_settings_setint(g_settings, "synth.cpu-cores", 8);
+
+    fluid_settings_setnum(g_settings, "synth.reverb.room-size", 1.0);
+    fluid_settings_setnum(g_settings, "synth.reverb.damp",    1.0);
     fluid_settings_setnum(g_settings, "synth.reverb.width",   0.8);
-    fluid_settings_setnum(g_settings, "synth.reverb.level",   0.7);
+    fluid_settings_setnum(g_settings, "synth.reverb.level",   1.0);
     fluid_settings_setint(g_settings, "synth.reverb.active",  1);
 
     g_synth = new_fluid_synth(g_settings);
@@ -320,7 +269,7 @@ int main(int argc, char** argv) {
         const char* a = argv[i];
 
         if (starts_with(a, "--sf2=")) {
-            const char* path = a + 7;
+            const char* path = a + 6;
             for (int c = 0; c < NUM_DEVICES; ++c) {
                 snprintf(g_chan[c].sf2_path, sizeof(g_chan[c].sf2_path), "%s", path);
             }
