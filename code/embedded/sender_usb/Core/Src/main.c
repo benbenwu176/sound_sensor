@@ -44,18 +44,16 @@
 #define MPR121_REG_DEBOUNCE					0x5B
 #define MPR121_REG_ELE0_T						0x41 // ELE0_R=0x42, ELE1_T=0x43, ...
 
-#define MPR121_TOUCH_THR_DEFAULT 		0x08 // TODO: fine-tune
+#define MPR121_TOUCH_THR_DEFAULT 		0x07 // TODO: fine-tune
 #define MPR121_RELEASE_THR_DEFAULT 	0x06 // TODO: fine-tune
 #define MPR121_DEBOUNCE							0x00 // TODO: fine-tune
 #define MPR121_RUN_MODE							0x8C // TODO: fine-tune
 
 // Packet length
-#define TOUCH_PKT_LEN								3
+#define TOUCH_PKT_LEN								2
 
 // Sensor ID mask
 volatile uint8_t g_mpr_irq_pending = 0;
-volatile uint16_t g_touched_mask;
-static uint16_t s_prev_mask = 0;
 
 /* USER CODE END PD */
 
@@ -63,7 +61,7 @@ static uint16_t s_prev_mask = 0;
 /* USER CODE BEGIN PM */
 
 #ifndef DEVICE_ID
-#define DEVICE_ID 0
+#define DEVICE_ID 7
 #endif
 
 // Accommodate for 9 devices total
@@ -99,6 +97,7 @@ I2C_HandleTypeDef hi2c1;
 
 /* USER CODE BEGIN PV */
 extern USBD_HandleTypeDef hUsbDeviceFS;
+int packets = 0;
 
 /* USER CODE END PV */
 
@@ -168,21 +167,11 @@ static bool MPR121_Init(void) {
 }
 
 static void SendTouchChanges(uint16_t new_mask) {
-	uint16_t diff = new_mask ^ s_prev_mask;
-	if (!diff) return;
-
-	// Transmit event only for changed sensor states
-	for (uint8_t ele = 0; ele < 12; ele++) {
-		uint16_t pad_mask = diff & (1U << ele);
-		if (diff & pad_mask) {
-			uint8_t packet[TOUCH_PKT_LEN]; // {device_id, sensor_id, state}
-			packet[0] = DEVICE_ID;
-			packet[1] = ele;
-			packet[2] = (new_mask & pad_mask) ? 1 : 0;
-			CDC_Transmit_FS(packet, 3);
-		}
-	}
-	s_prev_mask = new_mask;
+	// Transmit interrupt event
+	uint8_t packet[TOUCH_PKT_LEN]; // {device_id, mask}
+	packet[0] = DEVICE_ID;
+	packet[1] = new_mask & 0xFF;
+	CDC_Transmit_FS(packet, TOUCH_PKT_LEN);
 }
 
 /* USER CODE END 0 */
@@ -247,13 +236,12 @@ int main(void)
   	if (g_mpr_irq_pending) {
   		g_mpr_irq_pending = 0;
   		uint16_t mask = MPR121_ReadTouchedMask();
-  		g_touched_mask = mask;
 
   		// Light the LED while any electrode is touched
   		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, (mask ? GPIO_PIN_RESET: GPIO_PIN_SET));
   		SendTouchChanges(mask);
   	}
-//  	HAL_Delay(5);
+
   }
   /* USER CODE END 3 */
 }

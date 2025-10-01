@@ -133,34 +133,32 @@ static DWORD WINAPI serial_thread_proc(LPVOID param) {
 
     uint8_t pkt[3];
     while (g_running) {
-        if (!read_exact(h, pkt, 3)) {
+        if (!read_exact(h, pkt, 2)) {
             // likely a timeout — just continue while running
             continue;
         }
         int device_id = pkt[0];
-        int sensor_id = pkt[1];
-        int state     = pkt[2];
-
-        if (device_id < 0 || device_id >= NUM_DEVICES ||
-            sensor_id < 0 || sensor_id >= SENSORS_PER_DEVICE ||
-            (state != 0 && state != 1)) {
-            // ignore bad packet
-            continue;
-        }
-        
         int midi_chan = device_id;
         Device* dev = devices[device_id];
-        Note* note = dev->notes[sensor_id];
-
-        if (state == 1) {
-            // note on
-            fs_note_on(midi_chan, note->pitch, note->velocity + dev->velocity_offset);
-        } else if (state == 0) {
-            // note off
-            if (note->holdable) {
-                fs_note_off(midi_chan, note->pitch);
+        uint8_t new_mask = pkt[1];
+        uint8_t diff = new_mask ^ dev->old_mask;
+        for (uint8_t sensor_id = 0; sensor_id < SENSORS_PER_DEVICE; sensor_id++) {
+            uint8_t pad_mask = diff & (1U << sensor_id);
+            if (diff & pad_mask) {
+                bool state_on = (new_mask & pad_mask) ? true : false;
+                Note* note = dev->notes[sensor_id];
+                if (state_on) {
+                    // note on
+                    fs_note_on(midi_chan, note->pitch, note->velocity + dev->velocity_offset);
+                } else {
+                    // note off
+                    if (note->holdable) {
+                        fs_note_off(midi_chan, note->pitch);
+                    }
+                }
             }
         }
+        dev->old_mask = new_mask;
     }
 
     CloseHandle(h);
@@ -191,8 +189,9 @@ static int fluidsynth_init(const char* preferred_driver) {
     fluid_settings_setint(g_settings, "audio.periods", 2);
     fluid_settings_setint(g_settings, "audio.period-size", 128);
 
-    // fluid_settings_setint(g_settings, "synth.cpu-cores", 8);
+    // fluid_settings_setint(g_settings, "synth.cpu-cores", 8); // uncomment when wireless
 
+    fluid_settings_setint(g_settings, "synth.min-note-length", 125);
     fluid_settings_setnum(g_settings, "synth.reverb.room-size", 1.0);
     fluid_settings_setnum(g_settings, "synth.reverb.damp",    1.0);
     fluid_settings_setnum(g_settings, "synth.reverb.width",   0.8);
@@ -312,6 +311,12 @@ int main(int argc, char** argv) {
         } else {
             usage(argv[0]); return 1;
         }
+    }
+    uint32_t programs[] = {61, 61, 0, 0, 0, 32, 0, 0};
+    uint32_t banks[] = {0, 0, 0, 0, 0, 0, 128, 128};
+    for (int i = 0; i < NUM_DEVICES; i++) {
+        g_chan[i].program = programs[i];
+        g_chan[i].bank = banks[i];
     }
 
     if (com_count == 0) {

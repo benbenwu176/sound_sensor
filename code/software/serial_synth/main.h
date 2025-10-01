@@ -51,6 +51,7 @@ typedef struct {
 typedef struct {
     Note* notes[SENSORS_PER_DEVICE];
     int velocity_offset;
+    uint8_t old_mask;
 } Device;
 
 enum {
@@ -65,12 +66,12 @@ enum {
 };
 
 // Victoria
-Note note_0_0 = {65, 64, false};
-Note note_0_1 = {67, 64, false};
-Note note_0_2 = {69, 64, false};
-Note note_0_3 = {72, 64, false};
-Note note_0_4 = {74, 64, false};
-Note note_0_5 = {76, 64, false};
+Note note_0_0 = {65, 64, true};
+Note note_0_1 = {67, 64, true};
+Note note_0_2 = {69, 64, true};
+Note note_0_3 = {72, 64, true};
+Note note_0_4 = {74, 64, true};
+Note note_0_5 = {76, 64, true};
 
 // Edwin
 Note note_1_0 = {69, 64, true};
@@ -121,12 +122,12 @@ Note note_6_4 = {46, 64, false};
 Note note_6_5 = {49, 64, false};
 
 // Audrey
-Note note_7_0 = {36, 64, false};
-Note note_7_1 = {38, 64, false};
+Note note_7_0 = {38, 64, false};
+Note note_7_1 = {36, 64, false};
 Note note_7_2 = {54, 64, false};
 Note note_7_3 = {56, 64, false};
-Note note_7_4 = {42, 64, false};
-Note note_7_5 = {51, 64, false};
+Note note_7_4 = {46, 64, false};
+Note note_7_5 = {42, 64, false};
 
 // Devices
 Device victoria = {{&note_0_0, &note_0_1, &note_0_2, &note_0_3, &note_0_4, &note_0_5}, OFFSET_0};
