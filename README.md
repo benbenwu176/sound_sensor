@@ -38,7 +38,8 @@ capacitive touch sensors, wireless communication to a receiving hub, and FluidSy
 
 * Example when a simple change is made (rebuild, run):
     * `cmake --build build --config Release`
-    * `.\build\Release\serial_synth.exe --sf2=usb.sf2`
+    * `.\build\Release\serial_synth.exe --sf2=basic.sf2`
+    * `.\build\Release\serial_synth.exe COM6 COM7 COM8 COM9 COM10 COM11 COM12 --sf2=basic.sf2`
 
 ## Embedded:
 

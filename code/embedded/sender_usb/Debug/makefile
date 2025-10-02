@@ -64,8 +64,8 @@ all: main-build
 main-build: sender.elf secondary-outputs
 
 # Tool invocations
-sender.elf sender.map: $(OBJS) $(USER_OBJS) C:\Ben\School\Fall_2025\SOUnD\Wednesday\sound_sensor\code\embedded\sender_usb\STM32F103C6TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
-	arm-none-eabi-gcc -o "sender.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Ben\School\Fall_2025\SOUnD\Wednesday\sound_sensor\code\embedded\sender_usb\STM32F103C6TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="sender.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
+sender.elf sender.map: $(OBJS) $(USER_OBJS) C:\Ben\Code\sound_sensor\code\embedded\sender_usb\STM32F103C6TX_FLASH.ld makefile objects.list $(OPTIONAL_TOOL_DEPS)
+	arm-none-eabi-gcc -o "sender.elf" @"objects.list" $(USER_OBJS) $(LIBS) -mcpu=cortex-m3 -T"C:\Ben\Code\sound_sensor\code\embedded\sender_usb\STM32F103C6TX_FLASH.ld" --specs=nosys.specs -Wl,-Map="sender.map" -Wl,--gc-sections -static --specs=nano.specs -mfloat-abi=soft -mthumb -Wl,--start-group -lc -lm -Wl,--end-group
 	@echo 'Finished building target: $@'
 	@echo ' '
 

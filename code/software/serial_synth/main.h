@@ -103,7 +103,7 @@ Note note_4_1 = {43, 64, true};
 Note note_4_2 = {45, 64, true};
 Note note_4_3 = {48, 64, true};
 Note note_4_4 = {50, 64, true};
-Note note_4_5 = {52, 64, true};
+Note note_4_5 = {47, 64, true};
 
 // Maddie
 Note note_5_0 = {41, 64, true};

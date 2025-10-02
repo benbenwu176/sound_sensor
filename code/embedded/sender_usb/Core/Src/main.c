@@ -41,13 +41,14 @@
 
 #define MPR121_REG_TOUCH_STATUS_L 	0x00
 #define MPR121_REG_ECR 							0x5E
+#define MPR121_REG_AFE_CONFIG2			0x5D
 #define MPR121_REG_DEBOUNCE					0x5B
 #define MPR121_REG_ELE0_T						0x41 // ELE0_R=0x42, ELE1_T=0x43, ...
 
-#define MPR121_TOUCH_THR_DEFAULT 		0x07 // TODO: fine-tune
-#define MPR121_RELEASE_THR_DEFAULT 	0x06 // TODO: fine-tune
+#define MPR121_TOUCH_THR_DEFAULT 		0x7 // TODO: fine-tune
+#define MPR121_RELEASE_THR_DEFAULT 	0x6 // TODO: fine-tune
 #define MPR121_DEBOUNCE							0x00 // TODO: fine-tune
-#define MPR121_RUN_MODE							0x8C // TODO: fine-tune
+#define MPR121_RUN_MODE							0x36 // TODO: fine-tune
 
 // Packet length
 #define TOUCH_PKT_LEN								2
@@ -61,7 +62,7 @@ volatile uint8_t g_mpr_irq_pending = 0;
 /* USER CODE BEGIN PM */
 
 #ifndef DEVICE_ID
-#define DEVICE_ID 7
+#define DEVICE_ID 0
 #endif
 
 // Accommodate for 9 devices total
