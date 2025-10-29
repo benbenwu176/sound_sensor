@@ -1,6 +1,6 @@
-^C:\BEN\CODE\SOUND_SENSOR\CODE\SOFTWARE\SERIAL_SYNTH\BUILD\CMAKEFILES\409CDD11C1826CE23FE4743E604CFD16\GENERATE.STAMP.RULE
+^C:\BEN\SCHOOL\FALL_2025\SOUND\WEDNESDAY\SOUND_SENSOR\CODE\SOFTWARE\SERIAL_SYNTH\BUILD\CMAKEFILES\F8354518788BD48D67A2D10CB1367DE3\GENERATE.STAMP.RULE
 setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Ben/Code/sound_sensor/code/software/serial_synth -BC:/Ben/Code/sound_sensor/code/software/serial_synth/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Ben/Code/sound_sensor/code/software/serial_synth/build/serial_synth.sln
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Ben/School/Fall_2025/SOUnD/Wednesday/sound_sensor/code/software/serial_synth -BC:/Ben/School/Fall_2025/SOUnD/Wednesday/sound_sensor/code/software/serial_synth/build --check-stamp-list CMakeFiles/generate.stamp.list --vs-solution-file C:/Ben/School/Fall_2025/SOUnD/Wednesday/sound_sensor/code/software/serial_synth/build/serial_synth.sln
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone

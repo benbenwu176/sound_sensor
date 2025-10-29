@@ -312,8 +312,9 @@ int main(int argc, char** argv) {
             usage(argv[0]); return 1;
         }
     }
-    uint32_t programs[] = {61, 61, 0, 0, 0, 32, 0, 0};
     uint32_t banks[] = {0, 0, 0, 0, 0, 0, 128, 128};
+    uint32_t programs[] = {2, 2, 0, 2, 5, 6, 0, 1};
+    
     for (int i = 0; i < NUM_DEVICES; i++) {
         g_chan[i].program = programs[i];
         g_chan[i].bank = banks[i];

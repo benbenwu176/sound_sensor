@@ -66,59 +66,59 @@ enum {
 };
 
 // Victoria
-Note note_0_0 = {65, 64, true};
-Note note_0_1 = {67, 64, true};
-Note note_0_2 = {69, 64, true};
-Note note_0_3 = {72, 64, true};
-Note note_0_4 = {74, 64, true};
-Note note_0_5 = {76, 64, true};
+Note note_0_0 = {65, 64, false};
+Note note_0_1 = {67, 64, false};
+Note note_0_2 = {69, 64, false};
+Note note_0_3 = {72, 64, false};
+Note note_0_4 = {74, 64, false};
+Note note_0_5 = {76, 64, false};
 
 // Edwin
-Note note_1_0 = {69, 64, true};
-Note note_1_1 = {72, 64, true};
-Note note_1_2 = {74, 64, true};
-Note note_1_3 = {76, 64, true};
-Note note_1_4 = {77, 64, true};
-Note note_1_5 = {81, 64, true};
+Note note_1_0 = {69, 64, false};
+Note note_1_1 = {72, 64, false};
+Note note_1_2 = {74, 64, false};
+Note note_1_3 = {76, 64, false};
+Note note_1_4 = {77, 64, false};
+Note note_1_5 = {81, 64, false};
 
 // Yuktha
-Note note_2_0 = {65, 64, true};
-Note note_2_1 = {67, 64, true};
-Note note_2_2 = {69, 64, true};
-Note note_2_3 = {72, 64, true};
-Note note_2_4 = {74, 64, true};
-Note note_2_5 = {76, 64, true};
+Note note_2_0 = {65, 64, false};
+Note note_2_1 = {67, 64, false};
+Note note_2_2 = {69, 64, false};
+Note note_2_3 = {72, 64, false};
+Note note_2_4 = {74, 64, false};
+Note note_2_5 = {76, 64, false};
 
 // Jessica
-Note note_3_0 = {67, 64, true};
-Note note_3_1 = {67, 64, true};
-Note note_3_2 = {67, 64, true};
-Note note_3_3 = {67, 64, true};
-Note note_3_4 = {67, 64, true};
-Note note_3_5 = {67, 64, true};
+Note note_3_0 = {67, 64, false};
+Note note_3_1 = {67, 64, false};
+Note note_3_2 = {67, 64, false};
+Note note_3_3 = {67, 64, false};
+Note note_3_4 = {67, 64, false};
+Note note_3_5 = {67, 64, false};
 
 // Trang
-Note note_4_0 = {41, 64, true};
-Note note_4_1 = {43, 64, true};
-Note note_4_2 = {45, 64, true};
-Note note_4_3 = {48, 64, true};
-Note note_4_4 = {50, 64, true};
-Note note_4_5 = {47, 64, true};
+Note note_4_0 = {41, 64, false};
+Note note_4_1 = {43, 64, false};
+Note note_4_2 = {45, 64, false};
+Note note_4_3 = {48, 64, false};
+Note note_4_4 = {50, 64, false};
+Note note_4_5 = {47, 64, false};
 
 // Maddie
-Note note_5_0 = {41, 64, true};
-Note note_5_1 = {43, 64, true};
-Note note_5_2 = {45, 64, true};
-Note note_5_3 = {48, 64, true};
-Note note_5_4 = {50, 64, true};
-Note note_5_5 = {52, 64, true};
+Note note_5_0 = {41, 64, false};
+Note note_5_1 = {43, 64, false};
+Note note_5_2 = {45, 64, false};
+Note note_5_3 = {48, 64, false};
+Note note_5_4 = {50, 64, false};
+Note note_5_5 = {52, 64, false};
 
 // Mathew
-Note note_6_0 = {36, 64, false};
-Note note_6_1 = {43, 64, false};
-Note note_6_2 = {47, 64, false};
-Note note_6_3 = {50, 64, false};
-Note note_6_4 = {46, 64, false};
+Note note_6_0 = {43, 64, false};
+Note note_6_1 = {47, 64, false};
+Note note_6_2 = {50, 64, false};
+Note note_6_3 = {46, 64, false};
+Note note_6_4 = {36, 64, false};
 Note note_6_5 = {49, 64, false};
 
 // Audrey
