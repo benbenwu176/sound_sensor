@@ -59,7 +59,13 @@ void Error_Handler(void);
 /* Private defines -----------------------------------------------------------*/
 
 /* USER CODE BEGIN Private defines */
-
+#define NRF_IRQ_Pin GPIO_PIN_3
+#define NRF_IRQ_GPIO_Port GPIOA
+#define NRF_IRQ_EXTI_IRQn EXTI3_IRQn
+#define NRF_CE_Pin GPIO_PIN_0
+#define NRF_CE_GPIO_Port GPIOB
+#define SPI1_CSN_Pin GPIO_PIN_4
+#define SPI1_CSN_GPIO_Port GPIOA
 /* USER CODE END Private defines */
 
 #ifdef __cplusplus

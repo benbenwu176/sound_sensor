@@ -21,6 +21,7 @@
 
 /* Private includes ----------------------------------------------------------*/
 /* USER CODE BEGIN Includes */
+#include "nrf24l01.h"
 #include <stdbool.h>
 #include <stdint.h>
 
@@ -42,43 +43,10 @@
 #define MPR121_REG_DEBOUNCE					0x5B
 #define MPR121_REG_ELE0_T						0x41 // ELE0_R=0x42, ELE1_T=0x43, ...
 
-#define MPR121_TOUCH_THR_DEFAULT 		0x06 // TODO: fine-tune
-#define MPR121_RELEASE_THR_DEFAULT 	0x03 // TODO: fine-tune
+#define MPR121_TOUCH_THR_DEFAULT 		0x18 // TODO: fine-tune
+#define MPR121_RELEASE_THR_DEFAULT 	0x16 // TODO: fine-tune
 #define MPR121_DEBOUNCE							0x00 // TODO: fine-tune
 #define MPR121_RUN_MODE							0x8C // TODO: fine-tune
-
-/* ----- nRF24 definitions ----- */
-#define NRF_CMD_R_REGISTER 					0x00
-#define NRF_CMD_W_REGISTER 					0x20
-#define NRF_CMD_W_TX_PAYLOAD				0xA0
-#define NRF_CMD_FLUSH_TX						0xE1
-#define NRF_CMD_NOP									0xFF
-
-#define NRF_REG_CONFIG							0x00
-#define NRF_REG_EN_AA								0x01
-#define NRF_REG_EN_RXADDR						0x02
-#define NRF_REG_SETUP_AW						0x03
-#define NRF_REG_SETUP_RETR					0x04
-#define NRF_REG_RF_CH								0x05
-#define NRF_REG_RF_SETUP						0x06
-#define NRF_REG_STATUS							0x07
-#define NRF_REG_RX_ADDR_P0					0x0A
-#define NRF_REG_TX_ADDR							0x10
-#define NRF_REG_DYNPD								0x1C
-#define NRF_REG_FEATURE							0x1D
-
-// Status bits
-#define NRF_STATUS_RX_DR						(1U << 6)
-#define NRF_STATUS_TX_DS						(1U << 5)
-#define NRF_STATUS_MAX_RT						(1U << 4)
-
-#define NRF_CE_GPIO_Port 						GPIOA
-#define NRF_CE_Pin									GPIO_PIN_4
-#define NRF_CSN_GPIO_Port 					GPIOA
-#define NRF_CSN_Pin 								GPIO_PIN_3
-
-// Packet length
-#define TOUCH_PKT_LEN								2
 
 // Sensor ID mask
 volatile uint8_t g_mpr_irq_pending = 0;
@@ -144,12 +112,6 @@ static HAL_StatusTypeDef MPR121_ReadN(uint8_t reg, uint8_t *buf, uint16_t n);
 static uint16_t MPR121_ReadTouchedMask(void);
 static bool MPR121_Init(void);
 
-/* ----- nRF24 prototypes ----- */
-static void NRF_Init_TX(void);
-static bool NRF_Send(const uint8_t *payload, uint8_t len);
-static void NRF_ClearIRQ(void);
-static void SendTouchChanges(uint16_t new_mask);
-
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
@@ -194,145 +156,8 @@ static bool MPR121_Init(void) {
 	return true;
 }
 
-
-/* ----- nRF24 functions ----- */
-// Helpers
-static inline void CSN_L(void) { HAL_GPIO_WritePin(NRF_CSN_GPIO_Port, NRF_CSN_Pin, GPIO_PIN_RESET);}
-static inline void CSN_H(void) { HAL_GPIO_WritePin(NRF_CSN_GPIO_Port, NRF_CSN_Pin, GPIO_PIN_SET);}
-static inline void CE_L(void) {HAL_GPIO_WritePin(NRF_CE_GPIO_Port,  NRF_CE_Pin,  GPIO_PIN_RESET);}
-static inline void CE_H(void) {HAL_GPIO_WritePin(NRF_CE_GPIO_Port,  NRF_CE_Pin,  GPIO_PIN_SET);}
-
-static uint8_t spi_txrx(uint8_t b) {
-	uint8_t o = 0;
-	HAL_SPI_TransmitReceive(&hspi1, &b, &o, 1, 50);
-	return o;
-}
-
-static void nrf_write_reg(uint8_t reg, uint8_t val) {
-	CSN_L();
-	spi_txrx(NRF_CMD_W_REGISTER | (reg & 0x1F));
-	spi_txrx(val);
-	CSN_H();
-}
-
-static void nrf_write_buf(uint8_t reg, const uint8_t *buf, uint8_t len) {
-	CSN_L();
-	spi_txrx(NRF_CMD_W_REGISTER | (reg & 0x1F));
-	for (uint8_t i = 0; i < len; i++) {
-		spi_txrx(buf[i]);
-	}
-	CSN_H();
-}
-
-static uint8_t nrf_read_status(void) {
-	CSN_L();
-	uint8_t s = spi_txrx(NRF_CMD_NOP);
-	CSN_H();
-	return s;
-}
-
-static void nrf_flush_tx(void) {
-	CSN_L();
-	spi_txrx(NRF_CMD_FLUSH_TX);
-	CSN_H();
-}
-
-static void nrf_write_payload(const uint8_t *buf, uint8_t len) {
-	CSN_L();
-	spi_txrx(NRF_CMD_W_TX_PAYLOAD);
-	for (uint8_t i = 0; i < len; i++) {
-		spi_txrx(buf[i]);
-	}
-	CSN_H();
-}
-
-// nRF24 initial TX configuration
-static void NRF_Init_TX(void) {
-	// Idle levels
-	CE_L();
-	CSN_H();
-
-	// 5-byte address width
-	nrf_write_reg(NRF_REG_SETUP_AW, 0x03);
-
-	// Disable auto-ack, only pipe0 enabled (TX still uses TX_ADDR)
-	nrf_write_reg(NRF_REG_EN_AA, 0x00); // TODO: see if retry is needed
-	nrf_write_reg(NRF_REG_EN_RXADDR, 0x01);
-
-	// No retries (unused when EN_AA = 0)
-	nrf_write_reg(NRF_REG_SETUP_RETR, 0x00);
-
-	// RF channel e.g., 76 = 2.476 GHz) and 1Mbps @ 0 dBm
-	nrf_write_reg(NRF_REG_RF_CH, RF_CH_VAL);
-	nrf_write_reg(NRF_REG_RF_SETUP, 0x0E); // TODO: fine-tune (2 Mbps: 0x0E, 1Mbps: 0x06)
-
-	// Set TX/RX address based on DEV ID (must match receiver pipe0)
-	nrf_write_buf(NRF_REG_TX_ADDR, NRF_ADDR, 5);
-	nrf_write_buf(NRF_REG_RX_ADDR_P0, NRF_ADDR, 5);
-
-	// Static payloads, no dynamic, no features
-	nrf_write_reg(NRF_REG_DYNPD, 0x00);
-	nrf_write_reg(NRF_REG_FEATURE, 0x00);
-
-	// Power-up, TX mode, 2-byte CRC, IRQs enabled
-	nrf_write_reg(NRF_REG_CONFIG, 0x0E); // TODO: fine-tune (change to 1-byte CRC? 2 = 0x0E 1 = 0x0C)
-
-	// Clear any stale IRQs and FIFOs
-	NRF_ClearIRQ();
-	nrf_flush_tx();
-}
-
-static void NRF_ClearIRQ(void) {
-	// Write 1s to clear MAX_RT, TX_DS, RX_DR
-	nrf_write_reg(NRF_REG_STATUS, NRF_STATUS_MAX_RT | NRF_STATUS_TX_DS | NRF_STATUS_RX_DR);
-}
-
-// Queue a payload and pulse CE to transmit
-static bool NRF_Send(const uint8_t *payload, uint8_t len) {
-	// Only accept packet lengths between [1, 32]
-	if (len == 0 || len > 32) {return false;}
-
-	// Clear interrupt flags
-	NRF_ClearIRQ();
-	nrf_flush_tx();
-
-	nrf_write_payload(payload, len);
-
-	// >10 us (microseconds) CE pulse latches the packet out of TX FIFO
-	CE_H();
-	// Small delay ~15-20 us; use a few NOs or a short delay
-	for (volatile uint32_t i = 0; i < 800; i++) {
-		; // ~>10us @ 72MHz
-	}
-	CE_L();
-
-	// Optional brief status poll
-//	uint8_t s = nrf_read_status();
-//	if (s & NRF_STATUS_MAX_RT) {
-//		NRF_ClearIRQ();
-//		return false;
-//	}
-	return true;
-}
-
-static void SendTouchChanges(uint16_t new_mask) {
-	uint16_t diff = new_mask ^ s_prev_mask;
-	if (!diff) return;
-
-	// Transmit event only for changed sensor states
-	for (uint8_t ele = 0; ele < 12; ele++) {
-		uint16_t pad_mask = diff & (1U << ele);
-		if (diff & pad_mask) {
-			uint8_t packet[TOUCH_PKT_LEN]; // {sensor_id, state}
-			packet[0] = ele;
-			packet[1] = (new_mask & pad_mask) ? 1 : 0;
-			(void) NRF_Send(packet, TOUCH_PKT_LEN);
-			// Opt. tiny gap if receiver tends to be busy
-			// HAL_Delay(1);
-		}
-	}
-	s_prev_mask = new_mask;
-}
+/* nrf24l01 */
+uint8_t TxBuffer[NRF24L01_PAYLOAD_LENGTH] = {0};
 
 /* USER CODE END 0 */
 
@@ -379,7 +204,12 @@ int main(void)
   }
 
   // Initalize nRF24
-  NRF_Init_TX();
+  uint8_t TxAddress1[5] = {0xB3, 0xB4, 0xB5, 0xB6, DEVICE_ID};
+
+	NRF24L01_TxInit(70, NRF24L01_DATA_RATE_2MBPS, 2000);
+
+	NRF24L01_SetTxAddress(TxAddress1, 2000);
+
 
   // Turn LED off
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
@@ -390,19 +220,21 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1)
   {
+
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
   	if (g_mpr_irq_pending) {
   		g_mpr_irq_pending = 0;
-  		uint16_t mask = MPR121_ReadTouchedMask();
+  		uint8_t mask = MPR121_ReadTouchedMask() & 0xFF;
   		g_touched_mask = mask;
 
   		// Light the LED while any electrode is touched
   		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, (mask ? GPIO_PIN_RESET: GPIO_PIN_SET));
-  		SendTouchChanges(mask);
+  		TxBuffer[0] = DEVICE_ID;
+  		TxBuffer[1] = mask;
+  		NRF24L01_TxTransmit(TxBuffer, 2000);
   	}
-//  	HAL_Delay(5);
   }
   /* USER CODE END 3 */
 }
@@ -540,7 +372,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3|GPIO_PIN_4, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
+
+  /*Configure GPIO pin Output Level */
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
@@ -549,22 +384,35 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA3 PA4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4;
+  /*Configure GPIO pin : PA3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PA4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB0 PB5 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_5;
+  /*Configure GPIO pin : PB0 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0;
+  GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /*Configure GPIO pin : PB5 */
+  GPIO_InitStruct.Pin = GPIO_PIN_5;
   GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
   GPIO_InitStruct.Pull = GPIO_PULLUP;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
   /* EXTI interrupt init*/
-  HAL_NVIC_SetPriority(EXTI0_IRQn, 0, 0);
-  HAL_NVIC_EnableIRQ(EXTI0_IRQn);
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
   HAL_NVIC_SetPriority(EXTI9_5_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);

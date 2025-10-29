@@ -24,8 +24,11 @@
 /* USER CODE BEGIN Includes */
 #include "usbd_cdc_if.h"
 #include "string.h"
+#include <stdio.h>
 #include <stdint.h>
 #include <stdbool.h>
+
+#include "nrf24l01.h"
 /* USER CODE END Includes */
 
 /* Private typedef -----------------------------------------------------------*/
@@ -36,55 +39,16 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define NRF_CMD_R_REGISTER 			0x00
-#define NRF_CMD_W_REGISTER			0x20
-#define NRF_CMD_R_RX_PL_WID			0x60
-#define NRF_CMD_R_RX_PAYLOAD		0X61
-#define NRF_CMD_W_TX_PAYLOAD		0xA0
-#define NRF_CMD_FLUSH_RX				0xE2
-#define NRF_CMD_FLUSH_TX				0xE1
-#define NRF_CMD_REUSE_TX_PL			0xE3
-#define NRF_CMD_ACTIVATE				0x50
-#define NRF_CMD_NOP							0xFF
-
-#define NRF_REG_CONFIG            0x00
-#define NRF_REG_EN_AA             0x01
-#define NRF_REG_EN_RXADDR         0x02
-#define NRF_REG_SETUP_AW          0x03
-#define NRF_REG_SETUP_RETR        0x04
-#define NRF_REG_RF_CH             0x05
-#define NRF_REG_RF_SETUP          0x06
-#define NRF_REG_STATUS            0x07
-#define NRF_REG_RX_ADDR_P0        0x0A
-#define NRF_REG_RX_ADDR_P1        0x0B
-#define NRF_REG_RX_ADDR_P2        0x0C
-#define NRF_REG_RX_ADDR_P3        0x0D
-#define NRF_REG_RX_ADDR_P4        0x0E
-#define NRF_REG_RX_ADDR_P5        0x0F
-#define NRF_REG_RX_PW_P0          0x11
-#define NRF_REG_DYNPD             0x1C
-#define NRF_REG_FEATURE           0x1D
-#define NRF_REG_FIFO_STATUS       0x17
-
-// STATUS bits
-#define NRF_STATUS_RX_DR          (1U<<6)
-#define NRF_STATUS_TX_DS          (1U<<5)
-#define NRF_STATUS_MAX_RT         (1U<<4)
-#define NRF_STATUS_RX_P_NO_MASK   (7U<<1)
-
 // GPIO Pins
-#define NRF1_CE_GPIO_Port GPIOA
-#define NRF1_CE_Pin       GPIO_PIN_4
-#define NRF1_CSN_GPIO_Port GPIOA
-#define NRF1_CSN_Pin       GPIO_PIN_3
+#define NRFA_CE_GPIO_Port GPIOA
+#define NRFA_CE_Pin       GPIO_PIN_4
+#define NRFA_CSN_GPIO_Port GPIOA
+#define NRFA_CSN_Pin       GPIO_PIN_3
 
-#define NRF2_CE_GPIO_Port GPIOB
-#define NRF2_CE_Pin       GPIO_PIN_11
-#define NRF2_CSN_GPIO_Port GPIOB
-#define NRF2_CSN_Pin       GPIO_PIN_12
-
-// RF base address
-static const uint8_t PREFIX[4] = {0xE7,0xE7,0xE7,0xE7};
+#define NRFB_CE_GPIO_Port GPIOB
+#define NRFB_CE_Pin       GPIO_PIN_11
+#define NRFB_CSN_GPIO_Port GPIOB
+#define NRFB_CSN_Pin       GPIO_PIN_12
 
 // Radio A (SPI1) on CH=70 listens to A0..A3
 static const uint8_t A_LSB[4] = {0xA0,0xA1,0xA2,0xA3};
@@ -93,13 +57,6 @@ static const uint8_t A_LSB[4] = {0xA0,0xA1,0xA2,0xA3};
 // Radio B (SPI2) on CH=85 listens to B0..B3
 static const uint8_t B_LSB[4] = {0xB0,0xB1,0xB2,0xB3};
 #define RF_CH_B 85
-
-// USB packet is always 3 bytes: {addrLSB, sensorId(0..11), state(0/1)}
-static inline void usb_send3(uint8_t b0, uint8_t b1, uint8_t b2)
-{
-  uint8_t pkt[3] = { b0, b1, b2 };
-  while (CDC_Transmit_FS(pkt, 3) == USBD_BUSY) {;}
-}
 
 /* USER CODE END PD */
 
@@ -123,28 +80,13 @@ static void MX_GPIO_Init(void);
 static void MX_SPI1_Init(void);
 static void MX_SPI2_Init(void);
 /* USER CODE BEGIN PFP */
-static void usb_wait_configured(void);
-
-// nRF types & functions
-typedef struct {
-  SPI_HandleTypeDef *spi;
-  GPIO_TypeDef *ce_port, *csn_port;
-  uint16_t ce_pin, csn_pin;
-  uint8_t pipe_lsb[6];  // map pipe index -> LSB for USB byte0
-} NrfRx;
-
-static void nrf_prx_init(NrfRx *nrf, SPI_HandleTypeDef *spi,
-                         GPIO_TypeDef *ce_port, uint16_t ce_pin,
-                         GPIO_TypeDef *csn_port, uint16_t csn_pin,
-                         uint8_t rf_ch, const uint8_t prefix[4],
-                         const uint8_t lsbs[], uint8_t n_lsbs);
-
-static bool nrf_poll_drain(NrfRx *nrf); // returns true if any packet handled
 
 /* USER CODE END PFP */
 
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
+
+
 
 static void usb_wait_configured(void) {
 	while (hUsbDeviceFS.dev_state != USBD_STATE_CONFIGURED) {
@@ -158,141 +100,22 @@ static void send_bytes(const uint8_t *buf, uint16_t len) {
 	while (CDC_Transmit_FS((uint8_t *) buf, len) == USBD_BUSY);
 }
 
-static void test_send(void) {
-	uint8_t bytes[] = {0x10, 60, 127};
-	CDC_Transmit_FS(bytes, 3);
-}
+char msg[32] = {0};
 
-/* ----- nRF functions ----- */
-static inline void CSN_L(NrfRx *n){ HAL_GPIO_WritePin(n->csn_port, n->csn_pin, GPIO_PIN_RESET); }
-static inline void CSN_H(NrfRx *n){ HAL_GPIO_WritePin(n->csn_port, n->csn_pin, GPIO_PIN_SET); }
-static inline void CE_L (NrfRx *n){ HAL_GPIO_WritePin(n->ce_port,  n->ce_pin,  GPIO_PIN_RESET); }
-static inline void CE_H (NrfRx *n){ HAL_GPIO_WritePin(n->ce_port,  n->ce_pin,  GPIO_PIN_SET);  }
+uint8_t RxNumber = 10;
 
-static uint8_t spi_xfer(NrfRx *n, uint8_t b) {
-  uint8_t o=0;
-  HAL_SPI_TransmitReceive(n->spi, &b, &o, 1, 50);
-  return o;
-}
+uint8_t RxBuffer[NRF24L01_PAYLOAD_LENGTH] = { 0, };
 
-static void reg_write(NrfRx *n, uint8_t reg, uint8_t val) {
-  CSN_L(n);
-  spi_xfer(n, NRF_CMD_W_REGISTER | (reg & 0x1F));
-  spi_xfer(n, val);
-  CSN_H(n);
-}
-
-static void reg_write_buf(NrfRx *n, uint8_t reg, const uint8_t *buf, uint8_t len) {
-  CSN_L(n);
-  spi_xfer(n, NRF_CMD_W_REGISTER | (reg & 0x1F));
-  for(uint8_t i=0;i<len;i++) spi_xfer(n, buf[i]);
-  CSN_H(n);
-}
-
-static uint8_t reg_status(NrfRx *n) {
-  CSN_L(n);
-  uint8_t s = spi_xfer(n, NRF_CMD_NOP);
-  CSN_H(n);
-  return s;
-}
-
-static void flush_rx(NrfRx *n) {
-  CSN_L(n); spi_xfer(n, NRF_CMD_FLUSH_RX); CSN_H(n);
-}
-
-static void clear_irqs(NrfRx *n, uint8_t mask) {
-  reg_write(n, NRF_REG_STATUS, mask); // write-1-to-clear
-}
-
-static void dpl_enable(NrfRx *n, uint8_t pipes_mask) {
-  // Some clones require ACTIVATE 0x73 before FEATURE access
-  CSN_L(n); spi_xfer(n, NRF_CMD_ACTIVATE); spi_xfer(n, 0x73); CSN_H(n);
-  reg_write(n, NRF_REG_FEATURE, 0x04);     // EN_DPL
-  reg_write(n, NRF_REG_DYNPD,   pipes_mask); // enable DPL on selected pipes
-}
-
-static void nrf_prx_init(NrfRx *nrf, SPI_HandleTypeDef *spi,
-                         GPIO_TypeDef *ce_port, uint16_t ce_pin,
-                         GPIO_TypeDef *csn_port, uint16_t csn_pin,
-                         uint8_t rf_ch, const uint8_t prefix[4],
-                         const uint8_t lsbs[], uint8_t n_lsbs)
+void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-  nrf->spi = spi;
-  nrf->ce_port = ce_port;  nrf->ce_pin = ce_pin;
-  nrf->csn_port= csn_port; nrf->csn_pin= csn_pin;
-  for (int i=0;i<6;i++) nrf->pipe_lsb[i]=0xFF;
-  for (int i=0;i<n_lsbs && i<4;i++) nrf->pipe_lsb[i] = lsbs[i];
-
-  CE_L(nrf); CSN_H(nrf);
-
-  // 5-byte addresses, 2 Mbps @ 0 dBm
-  reg_write(nrf, NRF_REG_SETUP_AW, 0x03);
-  reg_write(nrf, NRF_REG_RF_SETUP, 0x0E);
-  reg_write(nrf, NRF_REG_RF_CH,    rf_ch);
-
-  // No Auto-ACK (low latency); enable pipes 0..(n_lsbs-1)
-  uint8_t pipes_mask = (1U << n_lsbs) - 1U; // e.g., 4 -> 0b1111
-  reg_write(nrf, NRF_REG_EN_AA,     0x00);
-  reg_write(nrf, NRF_REG_EN_RXADDR, pipes_mask);
-
-  // Address programming:
-  // P0 has its own full address; P1 full; P2..P5 only LSB (share P1's top bytes)
-  uint8_t a0[5] = { prefix[0],prefix[1],prefix[2],prefix[3], lsbs[0] };
-  reg_write_buf(nrf, NRF_REG_RX_ADDR_P0, a0, 5);
-
-  if (n_lsbs > 1) {
-    uint8_t a1[5] = { prefix[0],prefix[1],prefix[2],prefix[3], lsbs[1] };
-    reg_write_buf(nrf, NRF_REG_RX_ADDR_P1, a1, 5);
-  }
-  if (n_lsbs > 2) reg_write(nrf, NRF_REG_RX_ADDR_P2, lsbs[2]);
-  if (n_lsbs > 3) reg_write(nrf, NRF_REG_RX_ADDR_P3, lsbs[3]);
-
-  // Use Dynamic Payload Length so we can accept 2 or 3 bytes transparently
-  dpl_enable(nrf, pipes_mask);
-
-  // Power up, PRX, 2-byte CRC
-  reg_write(nrf, NRF_REG_CONFIG, 0x0F); // PWR_UP=1, PRIM_RX=1, EN_CRC=1, CRCO=1
-
-  // Clean state
-  clear_irqs(nrf, NRF_STATUS_RX_DR | NRF_STATUS_TX_DS | NRF_STATUS_MAX_RT);
-  flush_rx(nrf);
-
-  // Enter receive
-  HAL_Delay(3);
-  CE_H(nrf); // PRX listens while CE high
+	if(GPIO_Pin == NRF24L01_IRQ_GPIO_PIN)
+	{
+		NRF24L01_RxReceive(RxBuffer, &RxNumber, 2000);
+		memcpy(msg, RxBuffer, NRF24L01_PAYLOAD_LENGTH);
+		send_bytes(msg, NRF24L01_PAYLOAD_LENGTH);
+	}
 }
 
-// returns true if any packet processed
-static bool nrf_poll_drain(NrfRx *nrf)
-{
-  bool any=false;
-  for (;;) {
-    uint8_t s = reg_status(nrf);
-    uint8_t pno = (s >> 1) & 0x07;
-    if (!(s & NRF_STATUS_RX_DR) || pno > 5) break;
-
-    // Find payload width (DPL)
-    uint8_t pw;
-    CSN_L(nrf); spi_xfer(nrf, NRF_CMD_R_RX_PL_WID); pw = spi_xfer(nrf, 0); CSN_H(nrf);
-    if (pw == 0xFF || pw > 32) { flush_rx(nrf); clear_irqs(nrf, NRF_STATUS_RX_DR); continue; }
-
-    uint8_t buf[32];
-    CSN_L(nrf); spi_xfer(nrf, NRF_CMD_R_RX_PAYLOAD); for (uint8_t i=0;i<pw;i++) buf[i]=spi_xfer(nrf,0); CSN_H(nrf);
-    clear_irqs(nrf, NRF_STATUS_RX_DR);
-
-    uint8_t addr_lsb = (pno < 6) ? nrf->pipe_lsb[pno] : 0xFF;
-
-    // Expected TX payloads: 2 bytes {id,state}  OR  3 bytes {dev,id,state}
-    uint8_t id=0, st=0;
-    if (pw >= 2) { id = buf[(pw==2)?0:1]; st = buf[(pw==2)?1:2]; }
-
-    // USB: {addrLSB, id, state}
-    usb_send3(addr_lsb, id, st);
-//    test_send();
-    any = true;
-  }
-  return any;
-}
 /* USER CODE END 0 */
 
 /**
@@ -334,14 +157,21 @@ int main(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 
   // Radios
-  NrfRx nrfA, nrfB;
-  nrf_prx_init(&nrfA, &hspi1, NRF1_CE_GPIO_Port, NRF1_CE_Pin,
-                        NRF1_CSN_GPIO_Port, NRF1_CSN_Pin,
-                        RF_CH_A, PREFIX, A_LSB, 4);
+  uint8_t RxAddress0[5] = {0x78, 0x78, 0x78, 0x78, 0x78};
+	uint8_t RxAddress1[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0xCD};
+	uint8_t RxAddress2 = 0xF3;
+	uint8_t RxAddress3 = 0xF2;
+	uint8_t RxAddress4 = 0xF4;
+	uint8_t RxAddress5 = 0xF1;
 
-  nrf_prx_init(&nrfB, &hspi2, NRF2_CE_GPIO_Port, NRF2_CE_Pin,
-                        NRF2_CSN_GPIO_Port, NRF2_CSN_Pin,
-                        RF_CH_B, PREFIX, B_LSB, 4);
+	NRF24L01_RxInit(70, NRF24L01_DATA_RATE_2MBPS, 2000);
+
+	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P0, RxAddress0, 2000);
+	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P1, RxAddress1, 2000);
+	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P2, &RxAddress2, 2000);
+	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P3, &RxAddress3, 2000);
+	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P4, &RxAddress4, 2000);
+	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P5, &RxAddress5, 2000);
 
   /* USER CODE END 2 */
 
@@ -349,16 +179,8 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1) {
     /* USER CODE END WHILE */
-
     /* USER CODE BEGIN 3 */
-  	bool got = false;
-  	got |= nrf_poll_drain(&nrfA);
-  	got |= nrf_poll_drain(&nrfB);
-  	if (got) {
-			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
-			HAL_Delay(1000);
-			HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
-		}
+
   }
 
   /* USER CODE END 3 */
@@ -508,10 +330,10 @@ static void MX_GPIO_Init(void)
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_3|GPIO_PIN_4, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOA, GPIO_PIN_4, GPIO_PIN_RESET);
 
   /*Configure GPIO pin Output Level */
-  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_11|GPIO_PIN_12, GPIO_PIN_RESET);
+  HAL_GPIO_WritePin(GPIOB, GPIO_PIN_0|GPIO_PIN_11|GPIO_PIN_12, GPIO_PIN_RESET);
 
   /*Configure GPIO pin : PC13 */
   GPIO_InitStruct.Pin = GPIO_PIN_13;
@@ -520,25 +342,29 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOC, &GPIO_InitStruct);
 
-  /*Configure GPIO pin : PA0 */
-  GPIO_InitStruct.Pin = GPIO_PIN_0;
-  GPIO_InitStruct.Mode = GPIO_MODE_INPUT;
-  GPIO_InitStruct.Pull = GPIO_PULLUP;
+  /*Configure GPIO pin : PA3 */
+  GPIO_InitStruct.Pin = GPIO_PIN_3;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PA3 PA4 */
-  GPIO_InitStruct.Pin = GPIO_PIN_3|GPIO_PIN_4;
+  /*Configure GPIO pin : PA4 */
+  GPIO_InitStruct.Pin = GPIO_PIN_4;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOA, &GPIO_InitStruct);
 
-  /*Configure GPIO pins : PB11 PB12 */
-  GPIO_InitStruct.Pin = GPIO_PIN_11|GPIO_PIN_12;
+  /*Configure GPIO pins : PB0 PB11 PB12 */
+  GPIO_InitStruct.Pin = GPIO_PIN_0|GPIO_PIN_11|GPIO_PIN_12;
   GPIO_InitStruct.Mode = GPIO_MODE_OUTPUT_PP;
   GPIO_InitStruct.Pull = GPIO_NOPULL;
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
+  /* EXTI interrupt init*/
+  HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI3_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 
