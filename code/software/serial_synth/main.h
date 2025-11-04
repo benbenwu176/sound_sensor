@@ -65,7 +65,7 @@ enum {
     OFFSET_7 = 7
 };
 
-// Victoria
+// Trang
 Note note_0_0 = {65, 64, false};
 Note note_0_1 = {67, 64, false};
 Note note_0_2 = {69, 64, false};
@@ -81,7 +81,7 @@ Note note_1_3 = {76, 64, false};
 Note note_1_4 = {77, 64, false};
 Note note_1_5 = {81, 64, false};
 
-// Yuktha
+// Victoria
 Note note_2_0 = {65, 64, false};
 Note note_2_1 = {67, 64, false};
 Note note_2_2 = {69, 64, false};
@@ -89,15 +89,15 @@ Note note_2_3 = {72, 64, false};
 Note note_2_4 = {74, 64, false};
 Note note_2_5 = {76, 64, false};
 
-// Jessica
-Note note_3_0 = {67, 64, false};
-Note note_3_1 = {67, 64, false};
-Note note_3_2 = {67, 64, false};
-Note note_3_3 = {67, 64, false};
-Note note_3_4 = {67, 64, false};
-Note note_3_5 = {67, 64, false};
+// Yuktha
+Note note_3_0 = {65, 64, false};
+Note note_3_1 = {69, 64, false};
+Note note_3_2 = {72, 64, false};
+Note note_3_3 = {74, 64, false};
+Note note_3_4 = {76, 64, false};
+Note note_3_5 = {77, 64, false};
 
-// Trang
+// Jessica
 Note note_4_0 = {41, 64, false};
 Note note_4_1 = {43, 64, false};
 Note note_4_2 = {45, 64, false};
@@ -109,9 +109,9 @@ Note note_4_5 = {47, 64, false};
 Note note_5_0 = {41, 64, false};
 Note note_5_1 = {43, 64, false};
 Note note_5_2 = {45, 64, false};
-Note note_5_3 = {48, 64, false};
-Note note_5_4 = {50, 64, false};
-Note note_5_5 = {52, 64, false};
+Note note_5_3 = {50, 64, false};
+Note note_5_4 = {52, 64, false};
+Note note_5_5 = {48, 64, false};
 
 // Mathew
 Note note_6_0 = {43, 64, false};

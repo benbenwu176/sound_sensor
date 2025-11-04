@@ -1,6 +1,6 @@
-^C:\BEN\SCHOOL\FALL_2025\SOUND\WEDNESDAY\SOUND_SENSOR\CODE\SOFTWARE\SERIAL_SYNTH\CMAKELISTS.TXT
+^C:\BEN\CODE\SOUND_SENSOR\CODE\SOFTWARE\SERIAL_SYNTH\CMAKELISTS.TXT
 setlocal
-"C:\Program Files\CMake\bin\cmake.exe" -SC:/Ben/School/Fall_2025/SOUnD/Wednesday/sound_sensor/code/software/serial_synth -BC:/Ben/School/Fall_2025/SOUnD/Wednesday/sound_sensor/code/software/serial_synth/build --check-stamp-file C:/Ben/School/Fall_2025/SOUnD/Wednesday/sound_sensor/code/software/serial_synth/build/CMakeFiles/generate.stamp
+"C:\Program Files\CMake\bin\cmake.exe" -SC:/Ben/Code/sound_sensor/code/software/serial_synth -BC:/Ben/Code/sound_sensor/code/software/serial_synth/build --check-stamp-file C:/Ben/Code/sound_sensor/code/software/serial_synth/build/CMakeFiles/generate.stamp
 if %errorlevel% neq 0 goto :cmEnd
 :cmEnd
 endlocal & call :cmErrorLevel %errorlevel% & goto :cmDone

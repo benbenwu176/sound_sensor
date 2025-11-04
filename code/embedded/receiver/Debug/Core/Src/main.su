@@ -1,9 +1,9 @@
 ../Core/Src/main.c:91:13:usb_wait_configured	8	static
 ../Core/Src/main.c:99:13:send_bytes	16	static
 ../Core/Src/main.c:109:6:HAL_GPIO_EXTI_Callback	16	static
-../Core/Src/main.c:125:5:main	56	static
-../Core/Src/main.c:193:6:SystemClock_Config	88	static
-../Core/Src/main.c:240:13:MX_SPI1_Init	8	static
-../Core/Src/main.c:278:13:MX_SPI2_Init	8	static
-../Core/Src/main.c:316:13:MX_GPIO_Init	40	static
-../Core/Src/main.c:382:6:Error_Handler	4	static,ignoring_inline_asm
+../Core/Src/main.c:125:5:main	32	static
+../Core/Src/main.c:197:6:SystemClock_Config	88	static
+../Core/Src/main.c:244:13:MX_SPI1_Init	8	static
+../Core/Src/main.c:282:13:MX_SPI2_Init	8	static
+../Core/Src/main.c:320:13:MX_GPIO_Init	40	static
+../Core/Src/main.c:386:6:Error_Handler	4	static,ignoring_inline_asm

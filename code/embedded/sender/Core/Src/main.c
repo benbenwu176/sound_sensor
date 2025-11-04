@@ -59,7 +59,7 @@ static uint16_t s_prev_mask = 0;
 /* USER CODE BEGIN PM */
 
 #ifndef DEVICE_ID
-#define DEVICE_ID 0
+#define DEVICE_ID 3
 #endif
 
 // Accommodate for 9 devices total
@@ -195,12 +195,9 @@ int main(void)
   /* USER CODE BEGIN 2 */
 
   // Initialize MPR121
-  if (!MPR121_Init()) {
-  	// Rapid blink on MPR121 init failure
-  	while (1) {
-  		HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
-  		HAL_Delay(100);
-  	}
+  while (!MPR121_Init()) {
+  	HAL_GPIO_TogglePin(GPIOC, GPIO_PIN_13);
+		HAL_Delay(100);
   }
 
   // Initalize nRF24

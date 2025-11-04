@@ -35,6 +35,7 @@ capacitive touch sensors, wireless communication to a receiving hub, and FluidSy
         * `.\build\Release\serial_synth.exe COM3 COM4 COM5 COM6 COM7 COM8 COM9 COM10 --sf20=marimba.sf2 --prog0=12 --sf23=piano.sf2 --prog3=0 --sf2=usb.sf2 --driver=wasapi`
     * Production: 
         * `.\build\Release\serial_synth.exe COM6 COM7 COM8 COM9 COM10 COM11 COM12 --sf2=basic.sf2 --bank0=0 --prog0=61 --bank1=0 --prog1=61 --bank2=0 --prog2=0  --bank3=0 --prog3=0  --bank4=0 --prog4=0 --bank5=0 --prog5=32 --bank6=128 --prog6=0 --bank7=128 --prog7=0`
+        * `.\build\Release\serial_synth.exe COM5 --sf2=boop_bap.sf2`
 
 * Example when a simple change is made (rebuild, run):
     * `cmake --build build --config Release`

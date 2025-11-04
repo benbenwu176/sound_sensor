@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<museScore version="4.60">
+  <percussionPanelColumns>8</percussionPanelColumns>
+  <Drum pitch="0">
+    <head>normal</head>
+    <line>4</line>
+    <voice>0</voice>
+    <name>0</name>
+    <stem>1</stem>
+    <shortcut>A</shortcut>
+    </Drum>
+  <Drum pitch="1">
+    <head>normal</head>
+    <line>3</line>
+    <voice>0</voice>
+    <name>1</name>
+    <stem>1</stem>
+    <shortcut>B</shortcut>
+    </Drum>
+  <Drum pitch="2">
+    <head>normal</head>
+    <line>2</line>
+    <voice>0</voice>
+    <name>2</name>
+    <stem>1</stem>
+    <shortcut>C</shortcut>
+    </Drum>
+  <Drum pitch="3">
+    <head>normal</head>
+    <line>1</line>
+    <voice>0</voice>
+    <name>3</name>
+    <stem>1</stem>
+    <shortcut>D</shortcut>
+    </Drum>
+  <Drum pitch="4">
+    <head>normal</head>
+    <line>0</line>
+    <voice>0</voice>
+    <name>4</name>
+    <stem>1</stem>
+    <shortcut>E</shortcut>
+    </Drum>
+  <Drum pitch="5">
+    <head>normal</head>
+    <line>-1</line>
+    <voice>0</voice>
+    <name>5</name>
+    <stem>1</stem>
+    <shortcut>F</shortcut>
+    </Drum>
+  </museScore>

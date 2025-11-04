@@ -159,19 +159,23 @@ int main(void)
   // Radios
   uint8_t RxAddress0[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x00};
 	uint8_t RxAddress1[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x02};
-	uint8_t RxAddress2[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x03};
-	uint8_t RxAddress3[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x05};
-	uint8_t RxAddress4[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x06};
-	uint8_t RxAddress5[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x07};
+	uint8_t RxAddress2 = 0x03;
+	uint8_t RxAddress3 = 0x05;
+	uint8_t RxAddress4 = 0x06;
+	uint8_t RxAddress5 = 0x07;
+//	uint8_t RxAddress2[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x03};
+//	uint8_t RxAddress3[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x05};
+//	uint8_t RxAddress4[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x06};
+//	uint8_t RxAddress5[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x07};
 
 	NRF24L01_RxInit(70, NRF24L01_DATA_RATE_2MBPS, 2000);
 
 	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P0, RxAddress0, 2000);
 	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P1, RxAddress1, 2000);
-	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P2, RxAddress2, 2000);
-	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P3, RxAddress3, 2000);
-	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P4, RxAddress4, 2000);
-	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P5, RxAddress5, 2000);
+	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P2, &RxAddress2, 2000);
+	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P3, &RxAddress3, 2000);
+	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P4, &RxAddress4, 2000);
+	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P5, &RxAddress5, 2000);
 
   /* USER CODE END 2 */
 

@@ -1,16 +1,16 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="17.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClCompile Include="C:\Ben\School\Fall_2025\SOUnD\Wednesday\sound_sensor\code\software\serial_synth\main.c">
+    <ClCompile Include="C:\Ben\Code\sound_sensor\code\software\serial_synth\main.c">
       <Filter>Source Files</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
-    <CustomBuild Include="C:\Ben\School\Fall_2025\SOUnD\Wednesday\sound_sensor\code\software\serial_synth\CMakeLists.txt" />
+    <CustomBuild Include="C:\Ben\Code\sound_sensor\code\software\serial_synth\CMakeLists.txt" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Source Files">
-      <UniqueIdentifier>{30353B13-EDB4-34E2-86B6-D9D2B681B27E}</UniqueIdentifier>
+      <UniqueIdentifier>{3FC2D45A-B4C3-353C-B0D9-042F433F603B}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>
