@@ -55,41 +55,105 @@ typedef struct {
 } Device;
 
 enum {
-    OFFSET_0 = 0,
-    OFFSET_1 = 1,
-    OFFSET_2 = 2,
-    OFFSET_3 = 3,
-    OFFSET_4 = 4,
-    OFFSET_5 = 5,
-    OFFSET_6 = 6,
-    OFFSET_7 = 7
+    OFFSET_0 = 32,
+    OFFSET_1 = 0,
+    OFFSET_2 = 16,
+    OFFSET_3 = 0,
+    OFFSET_4 = 0,
+    OFFSET_5 = -16,
+    OFFSET_6 = 0,
+    OFFSET_7 = 0
 };
 
-// Trang
-Note note_0_0 = {65, 64, false};
-Note note_0_1 = {67, 64, false};
+// // Trang
+// Note note_0_0 = {65, 64, false};
+// Note note_0_1 = {67, 64, false};
+// Note note_0_2 = {69, 64, false};
+// Note note_0_3 = {72, 64, false};
+// Note note_0_4 = {74, 64, false};
+// Note note_0_5 = {76, 64, false};
+
+// // Edwin
+// Note note_1_0 = {69, 64, false};
+// Note note_1_1 = {72, 64, false};
+// Note note_1_2 = {74, 64, false};
+// Note note_1_3 = {76, 64, false};
+// Note note_1_4 = {77, 64, false};
+// Note note_1_5 = {81, 64, false};
+
+// // Victoria
+// Note note_2_0 = {65, 64, false};
+// Note note_2_1 = {67, 64, false};
+// Note note_2_2 = {69, 64, false};
+// Note note_2_3 = {72, 64, false};
+// Note note_2_4 = {74, 64, false};
+// Note note_2_5 = {76, 64, false};
+
+// // Yuktha
+// Note note_3_0 = {65, 64, false};
+// Note note_3_1 = {69, 64, false};
+// Note note_3_2 = {72, 64, false};
+// Note note_3_3 = {74, 64, false};
+// Note note_3_4 = {76, 64, false};
+// Note note_3_5 = {77, 64, false};
+
+// // Jessica
+// Note note_4_0 = {41, 64, false};
+// Note note_4_1 = {43, 64, false};
+// Note note_4_2 = {45, 64, false};
+// Note note_4_3 = {48, 64, false};
+// Note note_4_4 = {50, 64, false};
+// Note note_4_5 = {47, 64, false};
+
+// // Maddie
+// Note note_5_0 = {41, 64, false};
+// Note note_5_1 = {43, 64, false};
+// Note note_5_2 = {45, 64, false};
+// Note note_5_3 = {50, 64, false};
+// Note note_5_4 = {52, 64, false};
+// Note note_5_5 = {48, 64, false};
+
+// // Mathew
+// Note note_6_0 = {43, 64, false};
+// Note note_6_1 = {47, 64, false};
+// Note note_6_2 = {50, 64, false};
+// Note note_6_3 = {46, 64, false};
+// Note note_6_4 = {36, 64, false};
+// Note note_6_5 = {49, 64, false};
+
+// // Audrey
+// Note note_7_0 = {38, 64, false};
+// Note note_7_1 = {36, 64, false};
+// Note note_7_2 = {54, 64, false};
+// Note note_7_3 = {56, 64, false};
+// Note note_7_4 = {46, 64, false};
+// Note note_7_5 = {42, 64, false};
+
+// Trang (0)
+Note note_0_0 = {64, 64, false};
+Note note_0_1 = {65, 64, false};
 Note note_0_2 = {69, 64, false};
 Note note_0_3 = {72, 64, false};
 Note note_0_4 = {74, 64, false};
 Note note_0_5 = {76, 64, false};
 
-// Edwin
-Note note_1_0 = {69, 64, false};
-Note note_1_1 = {72, 64, false};
-Note note_1_2 = {74, 64, false};
-Note note_1_3 = {76, 64, false};
-Note note_1_4 = {77, 64, false};
-Note note_1_5 = {81, 64, false};
+// Edwin (1)
+Note note_1_0 = {64, 64, false};
+Note note_1_1 = {65, 64, false};
+Note note_1_2 = {69, 64, false};
+Note note_1_3 = {72, 64, false};
+Note note_1_4 = {74, 64, false};
+Note note_1_5 = {76, 64, false};
 
-// Victoria
-Note note_2_0 = {65, 64, false};
-Note note_2_1 = {67, 64, false};
+// Victoria (2)
+Note note_2_0 = {64, 64, false};
+Note note_2_1 = {65, 64, false};
 Note note_2_2 = {69, 64, false};
 Note note_2_3 = {72, 64, false};
-Note note_2_4 = {74, 64, false};
-Note note_2_5 = {76, 64, false};
+Note note_2_4 = {76, 64, false};
+Note note_2_5 = {81, 64, false};
 
-// Yuktha
+// Yuktha (3)
 Note note_3_0 = {65, 64, false};
 Note note_3_1 = {69, 64, false};
 Note note_3_2 = {72, 64, false};
@@ -97,7 +161,7 @@ Note note_3_3 = {74, 64, false};
 Note note_3_4 = {76, 64, false};
 Note note_3_5 = {77, 64, false};
 
-// Jessica
+// Jessica (4)
 Note note_4_0 = {41, 64, false};
 Note note_4_1 = {43, 64, false};
 Note note_4_2 = {45, 64, false};
@@ -105,29 +169,29 @@ Note note_4_3 = {48, 64, false};
 Note note_4_4 = {50, 64, false};
 Note note_4_5 = {47, 64, false};
 
-// Maddie
-Note note_5_0 = {41, 64, false};
-Note note_5_1 = {43, 64, false};
-Note note_5_2 = {45, 64, false};
-Note note_5_3 = {50, 64, false};
-Note note_5_4 = {52, 64, false};
-Note note_5_5 = {48, 64, false};
+// Maddie (5)
+Note note_5_0 = {45, 64, true};
+Note note_5_1 = {48, 64, true};
+Note note_5_2 = {52, 64, true};
+Note note_5_3 = {53, 64, true};
+Note note_5_4 = {56, 64, true};
+Note note_5_5 = {57, 64, true};
 
-// Mathew
-Note note_6_0 = {43, 64, false};
-Note note_6_1 = {47, 64, false};
-Note note_6_2 = {50, 64, false};
+// Mathew (6)
+Note note_6_0 = {36, 64, false};
+Note note_6_1 = {38, 64, false};
+Note note_6_2 = {42, 64, false};
 Note note_6_3 = {46, 64, false};
-Note note_6_4 = {36, 64, false};
-Note note_6_5 = {49, 64, false};
+Note note_6_4 = {41, 64, false}; // Unused
+Note note_6_5 = {43, 64, false}; // Unused
 
-// Audrey
-Note note_7_0 = {38, 64, false};
-Note note_7_1 = {36, 64, false};
-Note note_7_2 = {54, 64, false};
-Note note_7_3 = {56, 64, false};
-Note note_7_4 = {46, 64, false};
-Note note_7_5 = {42, 64, false};
+// Audrey (7)
+Note note_7_0 = {36, 64, false};
+Note note_7_1 = {38, 64, false};
+Note note_7_2 = {54, 64, false}; // Unused
+Note note_7_3 = {56, 64, false}; // Unused
+Note note_7_4 = {46, 64, false}; // Unused
+Note note_7_5 = {42, 64, false}; // Unused
 
 // Devices
 Device victoria = {{&note_0_0, &note_0_1, &note_0_2, &note_0_3, &note_0_4, &note_0_5}, OFFSET_0};
@@ -140,18 +204,3 @@ Device mathew   = {{&note_6_0, &note_6_1, &note_6_2, &note_6_3, &note_6_4, &note
 Device audrey   = {{&note_7_0, &note_7_1, &note_7_2, &note_7_3, &note_7_4, &note_7_5}, OFFSET_7};
 
 Device* devices[NUM_DEVICES] = {&victoria, &edwin, &yuktha, &jessica, &trang, &maddie, &mathew, &audrey};
-
-// static bool g_active[NUM_DEVICES][SENSORS_PER_DEVICE] = {0};
-
-// // Default note map: 8 devices × 6 sensors → MIDI notes
-// // Tune as you like; kept within 0..127.
-// static int g_note_map[NUM_DEVICES][SENSORS_PER_DEVICE] = {
-// /* dev 0 */ {65, 67, 69, 72, 74, 76}, // victoria: F, G, A, C, D, E (unused)
-// /* dev 1 */ {69, 72, 74, 76, 77, 81}, // edwin: A, C, D, E, F, A
-// /* dev 2 */ {65, 67, 69, 72, 74, 76}, // yuktha F, G, A, C, D, E (unused)
-// /* dev 3 */ {67, 67, 67, 67, 67, 67}, // jessica 67
-// /* dev 4 */ {41, 43, 45, 48, 50, 52}, // trang F, G, A, C, D, E (unused)
-// /* dev 5 */ {41, 43, 45, 48, 50, 52}, // maddie F, G, A, C, D, E (unused)
-// /* dev 6 */ {36, 43, 47, 50, 46, 49}, // mathew Bass, Low Floor, Low-Mid, High, Splash, Crash
-// /* dev 7 */ {36, 38, 54, 56, 42, 51}  // audorii Bass, Snare, Tambo, Cowbell, Hi-hat, Ride
-// };

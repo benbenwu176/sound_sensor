@@ -39,14 +39,21 @@
 #define MPR121_ADDR 								(MPR121_ADDR_7B << 1)
 
 #define MPR121_REG_TOUCH_STATUS_L 	0x00
-#define MPR121_REG_ECR 							0x5E
 #define MPR121_REG_DEBOUNCE					0x5B
+#define MPR121_REG_AFE_CFG1   			0x5C  // FFI (bits 7:6) | CDC (bits 5:0)
+#define MPR121_REG_AFE_CFG2   			0x5D  // CDT (7:5) | SFI (4:3) | ESI (2:0)
+#define MPR121_REG_ECR 							0x5E
 #define MPR121_REG_ELE0_T						0x41 // ELE0_R=0x42, ELE1_T=0x43, ...
+
+#define MPR121_AFE_CFG1_RESET 			0x10  // FFI=00 (6 samples), CDC=0x10 (16 µA)
+#define MPR121_AFE_CFG2_RESET 			0x24  // CDT=001 (0.5 µs), SFI=00 (4), ESI=100 (16 ms)
+#define MPR121_AFE_CFG1 						0b00011000 // 24uA
+#define MPR121_AFE_CFG2							0b00100001 // CDT 0.5us, ESI 2ms
 
 #define MPR121_TOUCH_THR_DEFAULT 		0x18 // TODO: fine-tune
 #define MPR121_RELEASE_THR_DEFAULT 	0x16 // TODO: fine-tune
 #define MPR121_DEBOUNCE							0x00 // TODO: fine-tune
-#define MPR121_RUN_MODE							0x8C // TODO: fine-tune
+#define MPR121_RUN_MODE							0x86 // TODO: fine-tune
 
 // Sensor ID mask
 volatile uint8_t g_mpr_irq_pending = 0;
@@ -59,7 +66,7 @@ static uint16_t s_prev_mask = 0;
 /* USER CODE BEGIN PM */
 
 #ifndef DEVICE_ID
-#define DEVICE_ID 3
+#define DEVICE_ID 7
 #endif
 
 // Accommodate for 9 devices total
@@ -140,6 +147,9 @@ static uint16_t MPR121_ReadTouchedMask(void) {
 static bool MPR121_Init(void) {
 	// Stop mode while configuring
 	if (MPR121_Write8(MPR121_REG_ECR, 0x00) != HAL_OK) {return false;}
+
+	if (MPR121_Write8(MPR121_REG_AFE_CFG1, MPR121_AFE_CFG1) != HAL_OK) {return false;}
+	if (MPR121_Write8(MPR121_REG_AFE_CFG2, MPR121_AFE_CFG2) != HAL_OK) {return false;}
 
 	// Touch configurations for ELE0 through ELE11
 	for (uint8_t ele = 0; ele < 12; ele++) {
