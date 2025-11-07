@@ -66,7 +66,7 @@ static uint16_t s_prev_mask = 0;
 /* USER CODE BEGIN PM */
 
 #ifndef DEVICE_ID
-#define DEVICE_ID 7
+#define DEVICE_ID 0
 #endif
 
 // Accommodate for 9 devices total

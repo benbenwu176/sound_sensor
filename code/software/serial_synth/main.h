@@ -54,16 +54,16 @@ typedef struct {
     uint8_t old_mask;
 } Device;
 
-enum {
-    OFFSET_0 = 32,
-    OFFSET_1 = 0,
-    OFFSET_2 = 16,
-    OFFSET_3 = 0,
-    OFFSET_4 = 0,
-    OFFSET_5 = -16,
-    OFFSET_6 = 0,
-    OFFSET_7 = 0
-};
+// enum {
+//     OFFSET_0 = 32,
+//     OFFSET_1 = 32,
+//     OFFSET_2 = 16,
+//     OFFSET_3 = 0,
+//     OFFSET_4 = 0,
+//     OFFSET_5 = -16,
+//     OFFSET_6 = 0,
+//     OFFSET_7 = 0
+// };
 
 // // Trang
 // Note note_0_0 = {65, 64, false};
@@ -129,69 +129,103 @@ enum {
 // Note note_7_4 = {46, 64, false};
 // Note note_7_5 = {42, 64, false};
 
+enum {
+    OFFSET_0 = 32,
+    OFFSET_1 = 0,
+    OFFSET_2 = 16,
+    OFFSET_3 = 0,
+    OFFSET_4 = -16,
+    OFFSET_5 = -16,
+    OFFSET_6 = 32,
+    OFFSET_7 = -16
+};
+
 // Trang (0)
-Note note_0_0 = {64, 64, false};
-Note note_0_1 = {65, 64, false};
-Note note_0_2 = {69, 64, false};
-Note note_0_3 = {72, 64, false};
-Note note_0_4 = {74, 64, false};
-Note note_0_5 = {76, 64, false};
+Note note_0_0 = {45, 64, true};
+Note note_0_1 = {48, 64, true};
+Note note_0_2 = {52, 64, true};
+Note note_0_3 = {53, 64, true};
+Note note_0_4 = {56, 64, true};
+Note note_0_5 = {57, 64, true};
 
 // Edwin (1)
-Note note_1_0 = {64, 64, false};
-Note note_1_1 = {65, 64, false};
-Note note_1_2 = {69, 64, false};
-Note note_1_3 = {72, 64, false};
-Note note_1_4 = {74, 64, false};
-Note note_1_5 = {76, 64, false};
+// Note note_1_0 = {64, 64, true};
+// Note note_1_1 = {65, 64, true};
+// Note note_1_2 = {69, 64, true};
+// Note note_1_3 = {72, 64, true};
+// Note note_1_4 = {76, 64, true};
+// Note note_1_5 = {81, 64, true};
+
+// J
+Note note_1_0 = {45, 80, false};
+Note note_1_1 = {48, 64, false};
+Note note_1_2 = {52, 64, false};
+Note note_1_3 = {45, 64, false};
+Note note_1_4 = {48, 64, false};
+Note note_1_5 = {52, 64, false};
+
+// T
+// Note note_1_0 = {45, 64, true};
+// Note note_1_1 = {48, 64, true};
+// Note note_1_2 = {52, 64, true};
+// Note note_1_3 = {53, 64, true};
+// Note note_1_4 = {56, 64, true};
+// Note note_1_5 = {57, 64, true};
+
+// Note note_1_0 = {64, 64, false};
+// Note note_1_1 = {65, 64, false};
+// Note note_1_2 = {69, 64, false};
+// Note note_1_3 = {72, 64, false};
+// Note note_1_4 = {76, 64, false};
+// Note note_1_5 = {76, 64, false};
 
 // Victoria (2)
-Note note_2_0 = {64, 64, false};
-Note note_2_1 = {65, 64, false};
-Note note_2_2 = {69, 64, false};
-Note note_2_3 = {72, 64, false};
-Note note_2_4 = {76, 64, false};
-Note note_2_5 = {81, 64, false};
+Note note_2_0 = {36, 64, false};
+Note note_2_1 = {38, 64, false};
+Note note_2_2 = {42, 64, false};
+Note note_2_3 = {46, 64, false};
+Note note_2_4 = {41, 64, false}; // Unused
+Note note_2_5 = {43, 64, false}; // Unused
 
 // Yuktha (3)
-Note note_3_0 = {65, 64, false};
-Note note_3_1 = {69, 64, false};
-Note note_3_2 = {72, 64, false};
-Note note_3_3 = {74, 64, false};
-Note note_3_4 = {76, 64, false};
-Note note_3_5 = {77, 64, false};
+Note note_3_0 = {64, 64, false};
+Note note_3_1 = {65, 64, false};
+Note note_3_2 = {69, 64, false};
+Note note_3_3 = {72, 64, false};
+Note note_3_4 = {74, 64, false};
+Note note_3_5 = {76, 64, false};
 
 // Jessica (4)
-Note note_4_0 = {41, 64, false};
-Note note_4_1 = {43, 64, false};
-Note note_4_2 = {45, 64, false};
-Note note_4_3 = {48, 64, false};
-Note note_4_4 = {50, 64, false};
-Note note_4_5 = {47, 64, false};
+Note note_4_0 = {45, 80, false};
+Note note_4_1 = {48, 64, false};
+Note note_4_2 = {52, 64, false};
+Note note_4_3 = {45, 64, false};
+Note note_4_4 = {48, 64, false};
+Note note_4_5 = {52, 64, false};
 
 // Maddie (5)
-Note note_5_0 = {45, 64, true};
-Note note_5_1 = {48, 64, true};
-Note note_5_2 = {52, 64, true};
-Note note_5_3 = {53, 64, true};
-Note note_5_4 = {56, 64, true};
-Note note_5_5 = {57, 64, true};
+Note note_5_0 = {36, 80, false};
+Note note_5_1 = {38, 64, false};
+Note note_5_2 = {36, 64, false}; // Unused
+Note note_5_3 = {36, 64, false}; // Unused
+Note note_5_4 = {36, 64, false}; // Unused
+Note note_5_5 = {38, 64, false}; // Unused
 
 // Mathew (6)
-Note note_6_0 = {36, 64, false};
-Note note_6_1 = {38, 64, false};
-Note note_6_2 = {42, 64, false};
-Note note_6_3 = {46, 64, false};
-Note note_6_4 = {41, 64, false}; // Unused
-Note note_6_5 = {43, 64, false}; // Unused
+Note note_6_0 = {64, 64, false};
+Note note_6_1 = {65, 64, false};
+Note note_6_2 = {69, 64, false};
+Note note_6_3 = {72, 64, false};
+Note note_6_4 = {76, 64, false};
+Note note_6_5 = {76, 64, false};
 
 // Audrey (7)
-Note note_7_0 = {36, 64, false};
-Note note_7_1 = {38, 64, false};
-Note note_7_2 = {54, 64, false}; // Unused
-Note note_7_3 = {56, 64, false}; // Unused
-Note note_7_4 = {46, 64, false}; // Unused
-Note note_7_5 = {42, 64, false}; // Unused
+Note note_7_0 = {69, 64, false};
+Note note_7_1 = {76, 64, false};
+Note note_7_2 = {81, 64, false};
+Note note_7_3 = {86, 64, false};
+Note note_7_4 = {81, 64, false};
+Note note_7_5 = {86, 64, false};
 
 // Devices
 Device victoria = {{&note_0_0, &note_0_1, &note_0_2, &note_0_3, &note_0_4, &note_0_5}, OFFSET_0};

@@ -39,24 +39,22 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
+#define PAYLOAD_LENGTH 2
+
 // GPIO Pins
-#define NRFA_CE_GPIO_Port GPIOA
-#define NRFA_CE_Pin       GPIO_PIN_4
-#define NRFA_CSN_GPIO_Port GPIOA
-#define NRFA_CSN_Pin       GPIO_PIN_3
+#define NRFA_CE_GPIO_PORT 	GPIOB
+#define NRFA_CE_GPIO_PIN    GPIO_PIN_0
+#define NRFA_CS_GPIO_PORT 	GPIOA
+#define NRFA_CS_GPIO_PIN    GPIO_PIN_4
+#define NRFA_IRQ_GPIO_PORT 	GPIOA
+#define NRFA_IRQ_GPIO_PIN 	GPIO_PIN_3
 
-#define NRFB_CE_GPIO_Port GPIOB
-#define NRFB_CE_Pin       GPIO_PIN_11
-#define NRFB_CSN_GPIO_Port GPIOB
-#define NRFB_CSN_Pin       GPIO_PIN_12
-
-// Radio A (SPI1) on CH=70 listens to A0..A3
-static const uint8_t A_LSB[4] = {0xA0,0xA1,0xA2,0xA3};
-#define RF_CH_A 70
-
-// Radio B (SPI2) on CH=85 listens to B0..B3
-static const uint8_t B_LSB[4] = {0xB0,0xB1,0xB2,0xB3};
-#define RF_CH_B 85
+#define NRFB_CE_GPIO_PORT 	GPIOB
+#define NRFB_CE_GPIO_PIN    GPIO_PIN_11
+#define NRFB_CS_GPIO_PORT 	GPIOB
+#define NRFB_CS_GPIO_PIN    GPIO_PIN_12
+#define NRFB_IRQ_GPIO_PORT 	GPIOB
+#define NRFB_IRQ_GPIO_PIN 	GPIO_PIN_10
 
 /* USER CODE END PD */
 
@@ -72,6 +70,9 @@ SPI_HandleTypeDef hspi2;
 /* USER CODE BEGIN PV */
 extern USBD_HandleTypeDef hUsbDeviceFS;
 
+NRF24L01_HandleTypeDef nrf_rx_A;
+NRF24L01_HandleTypeDef nrf_rx_B;
+
 /* USER CODE END PV */
 
 /* Private function prototypes -----------------------------------------------*/
@@ -86,8 +87,6 @@ static void MX_SPI2_Init(void);
 /* Private user code ---------------------------------------------------------*/
 /* USER CODE BEGIN 0 */
 
-
-
 static void usb_wait_configured(void) {
 	while (hUsbDeviceFS.dev_state != USBD_STATE_CONFIGURED) {
 		// Rapid LED Flashing - USB connecting state
@@ -100,20 +99,45 @@ static void send_bytes(const uint8_t *buf, uint16_t len) {
 	while (CDC_Transmit_FS((uint8_t *) buf, len) == USBD_BUSY);
 }
 
-char msg[32] = {0};
+volatile uint8_t nrfA_pending = 0;
+volatile uint8_t nrfB_pending = 0;
 
-uint8_t RxNumber = 10;
+char usb_buffer_A[32] = {0};
+char usb_buffer_B[32] = {0};
 
-uint8_t RxBuffer[NRF24L01_PAYLOAD_LENGTH] = { 0, };
+uint8_t rx_pipe_A = 0;
+uint8_t rx_pipe_B = 0;
+
+uint8_t rx_buffer_A[PAYLOAD_LENGTH] = {0, };
+uint8_t rx_buffer_B[PAYLOAD_LENGTH] = {0, };
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
-	if(GPIO_Pin == NRF24L01_IRQ_GPIO_PIN)
-	{
-		NRF24L01_RxReceive(RxBuffer, &RxNumber, 2000);
-		memcpy(msg, RxBuffer, NRF24L01_PAYLOAD_LENGTH);
-		send_bytes(msg, NRF24L01_PAYLOAD_LENGTH);
+	if (GPIO_Pin == nrf_rx_A.IRQ_GPIO_PIN) {
+		nrfA_pending = 1;
 	}
+
+	if (GPIO_Pin == nrf_rx_B.IRQ_GPIO_PIN) {
+		nrfB_pending = 1;
+	}
+}
+
+void NRF_Configure_Handles(void) {
+	nrf_rx_A.hspi          = &hspi1;
+	nrf_rx_A.CS_GPIO_PORT  = NRFA_CS_GPIO_PORT;
+	nrf_rx_A.CS_GPIO_PIN   = NRFA_CS_GPIO_PIN;
+	nrf_rx_A.CE_GPIO_PORT  = NRFA_CE_GPIO_PORT;
+	nrf_rx_A.CE_GPIO_PIN   = NRFA_CE_GPIO_PIN;
+	nrf_rx_A.IRQ_GPIO_PORT = NRFA_IRQ_GPIO_PORT;
+	nrf_rx_A.IRQ_GPIO_PIN  = NRFA_IRQ_GPIO_PIN;
+
+	nrf_rx_B.hspi          = &hspi2;
+	nrf_rx_B.CS_GPIO_PORT  = NRFB_CS_GPIO_PORT;
+	nrf_rx_B.CS_GPIO_PIN   = NRFB_CS_GPIO_PIN;
+	nrf_rx_B.CE_GPIO_PORT  = NRFB_CE_GPIO_PORT;
+	nrf_rx_B.CE_GPIO_PIN   = NRFB_CE_GPIO_PIN;
+	nrf_rx_B.IRQ_GPIO_PORT = NRFB_IRQ_GPIO_PORT;
+	nrf_rx_B.IRQ_GPIO_PIN  = NRFB_IRQ_GPIO_PIN;
 }
 
 /* USER CODE END 0 */
@@ -156,26 +180,35 @@ int main(void)
   // Turn LED off
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
 
+  NRF_Configure_Handles();
+
+  NRF24L01_SetRxPayloadWidths(&nrf_rx_A, PAYLOAD_LENGTH, 2000);
+  NRF24L01_SetRxPayloadWidths(&nrf_rx_B, PAYLOAD_LENGTH, 2000);
+
   // Radios
-  uint8_t RxAddress0[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x00};
-	uint8_t RxAddress1[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x02};
-	uint8_t RxAddress2 = 0x03;
-	uint8_t RxAddress3 = 0x05;
-	uint8_t RxAddress4 = 0x06;
-	uint8_t RxAddress5 = 0x07;
-//	uint8_t RxAddress2[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x03};
-//	uint8_t RxAddress3[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x05};
-//	uint8_t RxAddress4[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x06};
-//	uint8_t RxAddress5[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x07};
+  uint8_t RxAddress0_A[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x00};
+  uint8_t RxAddress1_A[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x01};
+  uint8_t RxAddress2_A = 0x02;
+  uint8_t RxAddress3_A = 0x03;
 
-	NRF24L01_RxInit(70, NRF24L01_DATA_RATE_2MBPS, 2000);
+  uint8_t RxAddress0_B[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x00};
+	uint8_t RxAddress1_B[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x05};
+	uint8_t RxAddress2_B = 0x06;
+	uint8_t RxAddress3_B = 0x07;
 
-	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P0, RxAddress0, 2000);
-	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P1, RxAddress1, 2000);
-	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P2, &RxAddress2, 2000);
-	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P3, &RxAddress3, 2000);
-	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P4, &RxAddress4, 2000);
-	NRF24L01_SetRxAddress(NRF24L01_RX_ADDRESS_P5, &RxAddress5, 2000);
+
+	NRF24L01_RxInit(&nrf_rx_A, 70, NRF24L01_DATA_RATE_2MBPS, 2000);
+	NRF24L01_RxInit(&nrf_rx_B, 70, NRF24L01_DATA_RATE_2MBPS, 2000);
+
+	NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P0, RxAddress0_A, 2000);
+	NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P1, RxAddress1_A, 2000);
+	NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P2, &RxAddress2_A, 2000);
+	NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P3, &RxAddress3_A, 2000);
+
+	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P0, RxAddress0_B, 2000);
+	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P1, RxAddress1_B, 2000);
+	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P2, &RxAddress2_B, 2000);
+	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P3, &RxAddress3_B, 2000);
 
   /* USER CODE END 2 */
 
@@ -183,8 +216,20 @@ int main(void)
   /* USER CODE BEGIN WHILE */
   while (1) {
     /* USER CODE END WHILE */
-    /* USER CODE BEGIN 3 */
 
+    /* USER CODE BEGIN 3 */
+  	if (nrfA_pending) {
+  		nrfA_pending = 0;
+  		NRF24L01_RxReceive(&nrf_rx_A, rx_buffer_A, &rx_pipe_A, 2000);
+			memcpy(usb_buffer_A, rx_buffer_A, PAYLOAD_LENGTH);
+			send_bytes(usb_buffer_A, PAYLOAD_LENGTH);
+  	}
+  	if (nrfB_pending) {
+  		nrfB_pending = 0;
+  		NRF24L01_RxReceive(&nrf_rx_B, rx_buffer_B, &rx_pipe_B, 2000);
+  		memcpy(usb_buffer_B, rx_buffer_B, PAYLOAD_LENGTH);
+  		send_bytes(usb_buffer_B, PAYLOAD_LENGTH);
+  	}
   }
 
   /* USER CODE END 3 */
@@ -366,9 +411,18 @@ static void MX_GPIO_Init(void)
   GPIO_InitStruct.Speed = GPIO_SPEED_FREQ_LOW;
   HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
 
+  /*Configure GPIO pin : PB10 */
+  GPIO_InitStruct.Pin = GPIO_PIN_10;
+  GPIO_InitStruct.Mode = GPIO_MODE_IT_FALLING;
+  GPIO_InitStruct.Pull = GPIO_NOPULL;
+  HAL_GPIO_Init(GPIOB, &GPIO_InitStruct);
+
   /* EXTI interrupt init*/
   HAL_NVIC_SetPriority(EXTI3_IRQn, 0, 0);
   HAL_NVIC_EnableIRQ(EXTI3_IRQn);
+
+  HAL_NVIC_SetPriority(EXTI15_10_IRQn, 0, 0);
+  HAL_NVIC_EnableIRQ(EXTI15_10_IRQn);
 
   /* USER CODE BEGIN MX_GPIO_Init_2 */
 

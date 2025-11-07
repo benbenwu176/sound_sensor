@@ -1,5 +1,4 @@
 Core/Src/nrf24l01.o: ../Core/Src/nrf24l01.c ../Core/Inc/nrf24l01.h \
- ../Core/Inc/nrf24l01_conf.h ../Core/Inc/main.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h \
  ../Core/Inc/stm32f1xx_hal_conf.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_rcc.h \
@@ -27,8 +26,6 @@ Core/Src/nrf24l01.o: ../Core/Src/nrf24l01.c ../Core/Inc/nrf24l01.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_ll_usb.h \
  ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_pcd_ex.h
 ../Core/Inc/nrf24l01.h:
-../Core/Inc/nrf24l01_conf.h:
-../Core/Inc/main.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal.h:
 ../Core/Inc/stm32f1xx_hal_conf.h:
 ../Drivers/STM32F1xx_HAL_Driver/Inc/stm32f1xx_hal_rcc.h:
