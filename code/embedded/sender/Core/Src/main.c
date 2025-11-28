@@ -50,15 +50,13 @@
 #define MPR121_AFE_CFG1 						0b00011000 // 24uA
 #define MPR121_AFE_CFG2							0b00100001 // CDT 0.5us, ESI 2ms
 
-#define MPR121_TOUCH_THR_DEFAULT 		0x18 // TODO: fine-tune
-#define MPR121_RELEASE_THR_DEFAULT 	0x16 // TODO: fine-tune
-#define MPR121_DEBOUNCE							0x00 // TODO: fine-tune
+#define MPR121_TOUCH_THR_DEFAULT 		0x20 // TODO: fine-tune
+#define MPR121_RELEASE_THR_DEFAULT 	0x1D // TODO: fine-tune
+#define MPR121_DEBOUNCE							0x11 // TODO: fine-tune
 #define MPR121_RUN_MODE							0x86 // TODO: fine-tune
 
 // Sensor ID mask
 volatile uint8_t g_mpr_irq_pending = 0;
-volatile uint16_t g_touched_mask;
-static uint16_t s_prev_mask = 0;
 
 /* USER CODE END PD */
 
@@ -66,34 +64,13 @@ static uint16_t s_prev_mask = 0;
 /* USER CODE BEGIN PM */
 
 #ifndef DEVICE_ID
-#define DEVICE_ID 0
+#define DEVICE_ID 7
 #endif
 
-// Accommodate for 9 devices total
+// Accommodate for 8 devices total
 #if (DEVICE_ID < 0) || (DEVICE_ID > 7)
 #error "DEVICE_ID must be in range [0, 7]"
 #endif
-
-// Channel split: 0-3 on CH 70, 4... on CH 85
-#define RF_CH0 				70
-#define RF_CH1 				85
-#define RF_CH_VAL 		((DEVICE_ID) < 4 ? (RF_CH0) : (RF_CH1))
-
-// Set pipe index 0-4
-#define PIPE_INDEX 		((DEVICE_ID) < 4 ? (DEVICE_ID) : (DEVICE_ID) - 4)
-
-// Set LSB of pipe address
-#define ADDR_BASE 		((DEVICE_ID) < 4 ? (0xA0) : (0xB0))
-#define ADDR_LAST 		(ADDR_BASE + PIPE_INDEX)
-
-// Set device 5-byte address
-#define ADDR_B0 0xE7
-#define ADDR_B1 0xE7
-#define ADDR_B2 0xE7
-#define ADDR_B3 0xE7
-#define ADDR_B4 ADDR_LAST
-
-static const uint8_t NRF_ADDR[5] = {ADDR_B0, ADDR_B1, ADDR_B2, ADDR_B3, ADDR_B4};
 
 /* USER CODE END PM */
 
@@ -212,11 +189,8 @@ int main(void)
 
   // Initalize nRF24
   uint8_t TxAddress1[5] = {0xB3, 0xB4, 0xB5, 0xB6, DEVICE_ID};
-
 	NRF24L01_TxInit(70, NRF24L01_DATA_RATE_2MBPS, 2000);
-
 	NRF24L01_SetTxAddress(TxAddress1, 2000);
-
 
   // Turn LED off
   HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, GPIO_PIN_SET);
@@ -234,7 +208,6 @@ int main(void)
   	if (g_mpr_irq_pending) {
   		g_mpr_irq_pending = 0;
   		uint8_t mask = MPR121_ReadTouchedMask() & 0xFF;
-  		g_touched_mask = mask;
 
   		// Light the LED while any electrode is touched
   		HAL_GPIO_WritePin(GPIOC, GPIO_PIN_13, (mask ? GPIO_PIN_RESET: GPIO_PIN_SET));

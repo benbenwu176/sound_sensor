@@ -1,5 +1,7 @@
 const {SerialPort} = require('serialport');
 
+let received = 0;
+
 // Example usage
 const deviceName = process.argv[2];
 const message = 'Hello from Ben!';
@@ -16,7 +18,8 @@ port.write(message, (error) => {
 });
 
 port.on('data', (data) => {
-    console.log(data);
+    console.log(data)
+    console.log(received++);
 //   let device_id = data[0];
 //   let new_mask = data[1];
 //   let diff = new_mask ^ old_mask;

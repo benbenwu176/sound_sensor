@@ -131,16 +131,28 @@ static DWORD WINAPI serial_thread_proc(LPVOID param) {
         return 1;
     }
 
-    uint8_t pkt[3];
+    uint8_t pkt[2];
     while (g_running) {
         if (!read_exact(h, pkt, 2)) {
             // likely a timeout — just continue while running
             continue;
         }
         int device_id = pkt[0];
+        uint8_t new_mask = pkt[1];
+        if (device_id < 0 || device_id > NUM_DEVICES) {
+            // invalid packet
+            continue;
+            // pkt[0] = pkt[1];
+            // if (!read_exact(h, pkt, 1)) {
+            //     continue;
+            // }
+
+            // device_id = pkt[0];
+            // new_mask = pkt[1];
+        }
         int midi_chan = device_id;
         Device* dev = devices[device_id];
-        uint8_t new_mask = pkt[1];
+        
         uint8_t diff = new_mask ^ dev->old_mask;
         for (uint8_t sensor_id = 0; sensor_id < SENSORS_PER_DEVICE; sensor_id++) {
             uint8_t pad_mask = diff & (1U << sensor_id);
@@ -184,7 +196,7 @@ static int fluidsynth_init(const char* preferred_driver) {
     }
 
     // Reasonable defaults; adjust for your latency/CPU balance
-    fluid_settings_setnum(g_settings, "synth.gain", 0.8);
+    fluid_settings_setnum(g_settings, "synth.gain", 10.0);
     fluid_settings_setnum(g_settings, "synth.sample-rate", 48000.0);
     fluid_settings_setint(g_settings, "audio.periods", 2);
     fluid_settings_setint(g_settings, "audio.period-size", 128);
@@ -312,10 +324,14 @@ int main(int argc, char** argv) {
             usage(argv[0]); return 1;
         }
     }
+    uint32_t banks[] = {0, 0, 0, 0, 0, 0, 128, 128};
+    uint32_t programs[] = {2, 2, 0, 2, 5, 6, 0, 1};
+
+    // uint32_t banks[] = {0, 0, 128, 0, 0, 128, 0, 0};
+    // uint32_t programs[] = {4, 1, 0, 0, 1, 16, 0, 82};
+
     // uint32_t banks[] = {0, 0, 0, 0, 0, 0, 128, 128};
-    // uint32_t programs[] = {2, 2, 0, 2, 5, 6, 0, 1};
-    uint32_t banks[] = {0, 0, 128, 0, 0, 128, 0, 0};
-    uint32_t programs[] = {4, 1, 0, 0, 1, 16, 0, 82};
+    // uint32_t programs[] = {2, 104, 0, 1, 2, 6, 0, 1};
     
     for (int i = 0; i < NUM_DEVICES; i++) {
         g_chan[i].program = programs[i];

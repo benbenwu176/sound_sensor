@@ -56,6 +56,8 @@
 #define NRFB_IRQ_GPIO_PORT 	GPIOB
 #define NRFB_IRQ_GPIO_PIN 	GPIO_PIN_10
 
+#define NRF_FIFO_RX_EMPTY_BIT  (1U << 0)
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -186,15 +188,17 @@ int main(void)
   NRF24L01_SetRxPayloadWidths(&nrf_rx_B, PAYLOAD_LENGTH, 2000);
 
   // Radios
-  uint8_t RxAddress0_A[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x00};
-  uint8_t RxAddress1_A[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x01};
-  uint8_t RxAddress2_A = 0x02;
-  uint8_t RxAddress3_A = 0x03;
+  uint8_t RxAddress0_A[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0xFF};
+  uint8_t RxAddress1_A[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x00};
+  uint8_t RxAddress2_A = 0x01;
+  uint8_t RxAddress3_A = 0x02;
+  uint8_t RxAddress4_A = 0x03;
 
-  uint8_t RxAddress0_B[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x00};
-	uint8_t RxAddress1_B[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x05};
-	uint8_t RxAddress2_B = 0x06;
-	uint8_t RxAddress3_B = 0x07;
+  uint8_t RxAddress0_B[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0xFF};
+	uint8_t RxAddress1_B[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x04};
+	uint8_t RxAddress2_B = 0x05;
+	uint8_t RxAddress3_B = 0x06;
+	uint8_t RxAddress4_B = 0x07;
 
 
 	NRF24L01_RxInit(&nrf_rx_A, 70, NRF24L01_DATA_RATE_2MBPS, 2000);
@@ -204,11 +208,13 @@ int main(void)
 	NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P1, RxAddress1_A, 2000);
 	NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P2, &RxAddress2_A, 2000);
 	NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P3, &RxAddress3_A, 2000);
+	NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P4, &RxAddress4_A, 2000);
 
 	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P0, RxAddress0_B, 2000);
 	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P1, RxAddress1_B, 2000);
 	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P2, &RxAddress2_B, 2000);
 	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P3, &RxAddress3_B, 2000);
+	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P4, &RxAddress4_B, 2000);
 
   /* USER CODE END 2 */
 
@@ -218,18 +224,40 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
+//  	if (nrfA_pending) {
+//  		nrfA_pending = 0;
+//  		NRF24L01_RxReceive(&nrf_rx_A, rx_buffer_A, &rx_pipe_A, 2000);
+//			memcpy(usb_buffer_A, rx_buffer_A, PAYLOAD_LENGTH);
+//			send_bytes(usb_buffer_A, PAYLOAD_LENGTH);
+//  	}
+//  	if (nrfB_pending) {
+//  		nrfB_pending = 0;
+//  		NRF24L01_RxReceive(&nrf_rx_B, rx_buffer_B, &rx_pipe_B, 2000);
+//  		memcpy(usb_buffer_B, rx_buffer_B, PAYLOAD_LENGTH);
+//  		send_bytes(usb_buffer_B, PAYLOAD_LENGTH);
+//  	}
+
   	if (nrfA_pending) {
-  		nrfA_pending = 0;
-  		NRF24L01_RxReceive(&nrf_rx_A, rx_buffer_A, &rx_pipe_A, 2000);
-			memcpy(usb_buffer_A, rx_buffer_A, PAYLOAD_LENGTH);
-			send_bytes(usb_buffer_A, PAYLOAD_LENGTH);
-  	}
-  	if (nrfB_pending) {
-  		nrfB_pending = 0;
-  		NRF24L01_RxReceive(&nrf_rx_B, rx_buffer_B, &rx_pipe_B, 2000);
-  		memcpy(usb_buffer_B, rx_buffer_B, PAYLOAD_LENGTH);
-  		send_bytes(usb_buffer_B, PAYLOAD_LENGTH);
-  	}
+			nrfA_pending = 0;
+
+			/* read until RX FIFO is empty */
+			while ((NRF24L01_GetFIFOStatus(&nrf_rx_A, 200) & NRF_FIFO_RX_EMPTY_BIT) == 0) {
+				NRF24L01_RxReceive(&nrf_rx_A, rx_buffer_A, &rx_pipe_A, 200);
+				memcpy(usb_buffer_A, rx_buffer_A, PAYLOAD_LENGTH);
+				send_bytes(usb_buffer_A, PAYLOAD_LENGTH);
+			}
+		}
+
+			/* if radio B signalled an IRQ, drain all queued payloads */
+		if (nrfB_pending) {
+			nrfB_pending = 0;
+
+			while ((NRF24L01_GetFIFOStatus(&nrf_rx_B, 200) & NRF_FIFO_RX_EMPTY_BIT) == 0) {
+				NRF24L01_RxReceive(&nrf_rx_B, rx_buffer_B, &rx_pipe_B, 200);
+				memcpy(usb_buffer_B, rx_buffer_B, PAYLOAD_LENGTH);
+				send_bytes(usb_buffer_B, PAYLOAD_LENGTH);
+			}
+		}
   }
 
   /* USER CODE END 3 */
