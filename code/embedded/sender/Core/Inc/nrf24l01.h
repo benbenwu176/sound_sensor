@@ -257,6 +257,7 @@ typedef enum /* NRF24L01+ Register bit's */
 	NRF24L01_TX_DS               = 5,
 	NRF24L01_TX_DS_MASK          = 0x20,
 	NRF24L01_MAX_RT              = 4,
+	NRF24L01_MAX_RT_MASK         = 0x10,
 
 	/* Config Register */
 	NRF24L01_PRIM_RX             = 0,

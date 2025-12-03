@@ -59,6 +59,7 @@
 
 /* USER CODE BEGIN EV */
 extern volatile uint8_t g_mpr_irq_pending;
+extern volatile uint8_t g_nrf_irq_pending;
 
 extern void NRF_ClearIRQ(void);
 /* USER CODE END EV */
@@ -236,7 +237,7 @@ void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin) {
   	g_mpr_irq_pending = 1;
 
   } else if (GPIO_Pin == NRF24L01_IRQ_GPIO_PIN) {
-  	NRF24L01_TxIRQHandle(2000);
+  	g_nrf_irq_pending = 1;
   }
 }
 /* USER CODE END 1 */

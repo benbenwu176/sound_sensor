@@ -35,7 +35,7 @@ static HANDLE open_com_port(const char* shortName) {
         return INVALID_HANDLE_VALUE;
     }
 
-    dcb.BaudRate = CBR_115200; // common default
+    dcb.BaudRate = CBR_115200; // match your CDC baud if relevant
     dcb.ByteSize = 8;
     dcb.Parity   = NOPARITY;
     dcb.StopBits = ONESTOPBIT;
@@ -77,7 +77,6 @@ static BOOL read_exact(HANDLE h, uint8_t* buf, DWORD len) {
         if (!ReadFile(h, buf + total, len - total, &got, NULL)) {
             DWORD err = GetLastError();
             if (err == ERROR_OPERATION_ABORTED) return FALSE;
-            // non-fatal: break if no data and timeouts
             return FALSE;
         }
         if (got == 0) {
@@ -89,7 +88,56 @@ static BOOL read_exact(HANDLE h, uint8_t* buf, DWORD len) {
     return (total == len);
 }
 
-// -------------- FluidSynth helpers ----------------
+/* Read a framed packet:
+ *   FE ED <device_id> <mask>
+ * Returns TRUE with payload[0]=device_id, payload[1]=mask
+ */
+static BOOL read_framed_packet(HANDLE h, uint8_t payload[2]) {
+    enum {
+        WAIT_SYNC_FE = 0,
+        WAIT_SYNC_ED = 1
+    } state = WAIT_SYNC_FE;
+
+    uint8_t b = 0;
+    while (g_running) {
+        DWORD got = 0;
+        if (!ReadFile(h, &b, 1, &got, NULL)) {
+            DWORD err = GetLastError();
+            if (err == ERROR_OPERATION_ABORTED) {
+                return FALSE;
+            }
+            // treat other errors as non-fatal; try again
+            continue;
+        }
+        if (got == 0) {
+            // timeout, keep looping while running
+            continue;
+        }
+
+        if (state == WAIT_SYNC_FE) {
+            if (b == 0xFE) {
+                state = WAIT_SYNC_ED;
+            }
+        } else { // WAIT_SYNC_ED
+            if (b == 0xED) {
+                // Got full sync FE ED, now read the 2-byte payload
+                if (!read_exact(h, payload, 2)) {
+                    return FALSE;
+                }
+                return TRUE;
+            } else if (b == 0xFE) {
+                // Could be start of new sync sequence (FE FE ED...)
+                state = WAIT_SYNC_ED;
+            } else {
+                // Lost sync, go back to looking for FE
+                state = WAIT_SYNC_FE;
+            }
+        }
+    }
+    return FALSE;
+}
+
+/* ---------- FluidSynth helpers ---------- */
 
 static void fs_note_on(int chan, int key, int vel) {
     EnterCriticalSection(&g_synthLock);
@@ -113,7 +161,6 @@ static int fs_load_for_channel(int chan) {
     g_chan[chan].sfont_id = id;
 
     // Select the sfont (and program/bank) for this MIDI channel
-    // (Either program_select or sfont_select+program_change; this does all in one)
     if (fluid_synth_program_select(g_synth, chan, id, g_chan[chan].bank, g_chan[chan].program) != FLUID_OK) {
         fprintf(stderr, "[ERROR] program_select failed on channel %d\n", chan);
         return -1;
@@ -121,63 +168,7 @@ static int fs_load_for_channel(int chan) {
     return 0;
 }
 
-// -------------- Serial thread ----------------
-
-static DWORD WINAPI serial_thread_proc(LPVOID param) {
-    SerialThreadArgs* args = (SerialThreadArgs*)param;
-    HANDLE h = open_com_port(args->port_name);
-    if (h == INVALID_HANDLE_VALUE) {
-        fprintf(stderr, "[WARN] Thread for %s exiting (could not open)\n", args->port_name);
-        return 1;
-    }
-
-    uint8_t pkt[2];
-    while (g_running) {
-        if (!read_exact(h, pkt, 2)) {
-            // likely a timeout — just continue while running
-            continue;
-        }
-        int device_id = pkt[0];
-        uint8_t new_mask = pkt[1];
-        if (device_id < 0 || device_id > NUM_DEVICES) {
-            // invalid packet
-            continue;
-            // pkt[0] = pkt[1];
-            // if (!read_exact(h, pkt, 1)) {
-            //     continue;
-            // }
-
-            // device_id = pkt[0];
-            // new_mask = pkt[1];
-        }
-        int midi_chan = device_id;
-        Device* dev = devices[device_id];
-        
-        uint8_t diff = new_mask ^ dev->old_mask;
-        for (uint8_t sensor_id = 0; sensor_id < SENSORS_PER_DEVICE; sensor_id++) {
-            uint8_t pad_mask = diff & (1U << sensor_id);
-            if (diff & pad_mask) {
-                bool state_on = (new_mask & pad_mask) ? true : false;
-                Note* note = dev->notes[sensor_id];
-                if (state_on) {
-                    // note on
-                    fs_note_on(midi_chan, note->pitch, note->velocity + dev->velocity_offset);
-                } else {
-                    // note off
-                    if (note->holdable) {
-                        fs_note_off(midi_chan, note->pitch);
-                    }
-                }
-            }
-        }
-        dev->old_mask = new_mask;
-    }
-
-    CloseHandle(h);
-    return 0;
-}
-
-// -------------- Init / teardown ----------------
+/* ---------- Init / teardown ---------- */
 
 static int fluidsynth_init(const char* preferred_driver) {
     InitializeCriticalSection(&g_synthLock);
@@ -196,12 +187,12 @@ static int fluidsynth_init(const char* preferred_driver) {
     }
 
     // Reasonable defaults; adjust for your latency/CPU balance
-    fluid_settings_setnum(g_settings, "synth.gain", 10.0);
+    fluid_settings_setnum(g_settings, "synth.gain", 6.0);
     fluid_settings_setnum(g_settings, "synth.sample-rate", 48000.0);
     fluid_settings_setint(g_settings, "audio.periods", 2);
     fluid_settings_setint(g_settings, "audio.period-size", 128);
+    fluid_settings_setint(g_settings, "synth.cpu-cores", 4);
 
-    // fluid_settings_setint(g_settings, "synth.cpu-cores", 8); // uncomment when wireless
 
     fluid_settings_setint(g_settings, "synth.min-note-length", 125);
     fluid_settings_setnum(g_settings, "synth.reverb.room-size", 1.0);
@@ -236,7 +227,7 @@ static void fluidsynth_shutdown(void) {
     DeleteCriticalSection(&g_synthLock);
 }
 
-// -------------- CLI parsing ----------------
+/* ---------- CLI parsing ---------- */
 
 static bool starts_with(const char* s, const char* pfx) {
     size_t n = strlen(pfx);
@@ -246,26 +237,25 @@ static bool starts_with(const char* s, const char* pfx) {
 static void usage(const char* exe) {
     fprintf(stderr,
         "Usage:\n"
-        "  %s [COM ports...] [--sf2=<path>] [--sf20=<path> ... --sf27=<path>] [--bankN=<b>] [--progN=<p>] [--driver=wasapi|dsound|winmm]\n"
+        "  %s [COMx] [--sf2=<path>] [--driver=wasapi|dsound|winmm]\n"
         "\n"
         "Examples:\n"
-        "  %s COM3 COM4 COM5 COM6 COM7 COM8 COM9 COM10 --sf2=usb.sf2\n"
-        "  %s --sf2=usb.sf2             (defaults to COM1..COM8)\n"
-        "  %s COM11 COM12 ... COM18 --sf20=marimba.sf2 --prog0=12 --sf23=piano.sf2 --prog3=0\n"
+        "  %s COM5 --sf2=usb.sf2\n"
+        "  %s --sf2=usb.sf2             (defaults to COM1)\n"
         "\n"
         "Notes:\n"
-        " - device_id is used as MIDI channel (0..7)\n"
-        " - per-channel sf2 overrides use flags --sf2N (N=0..7); otherwise --sf2 is used for all\n"
-        " - default bank=0, program=0 per channel unless overridden with --bankN / --progN\n"
-        , exe, exe, exe, exe);
+        " - device_id (0..7) is used as MIDI channel\n"
+        " - --sf2 sets a single soundfont for all channels\n",
+        exe, exe, exe);
 }
 
-int main(int argc, char** argv) {
-    // Defaults
-    char com_list[MAX_COM_PORTS][64];
-    int  com_count = 0;
+/* ---------- Main: single COM, single device stream ---------- */
 
-    // Soundfont defaults
+int main(int argc, char** argv) {
+    // Default to a single COM port
+    char com_port[64] = "COM5";
+
+    // Soundfont defaults (same sf2 for all channels)
     for (int i = 0; i < NUM_DEVICES; ++i) {
         snprintf(g_chan[i].sf2_path, sizeof(g_chan[i].sf2_path), "usb.sf2");
         g_chan[i].bank = 0;
@@ -275,7 +265,7 @@ int main(int argc, char** argv) {
 
     char driver_opt[32] = "wasapi";
 
-    // Parse args
+    // Parse args: COM, --sf2, --driver only
     for (int i = 1; i < argc; ++i) {
         const char* a = argv[i];
 
@@ -284,67 +274,30 @@ int main(int argc, char** argv) {
             for (int c = 0; c < NUM_DEVICES; ++c) {
                 snprintf(g_chan[c].sf2_path, sizeof(g_chan[c].sf2_path), "%s", path);
             }
-        } else if (starts_with(a, "--sf2")) {
-            // per-channel: --sf2N=...
-            int idx = a[5] - '0'; // a like "--sf2N=..."
-            const char* eq = strchr(a, '=');
-            if (idx >= 0 && idx < NUM_DEVICES && eq) {
-                snprintf(g_chan[idx].sf2_path, sizeof(g_chan[idx].sf2_path), "%s", eq + 1);
-            } else {
-                usage(argv[0]); return 1;
-            }
-        } else if (starts_with(a, "--prog")) {
-            // --progN=#
-            int idx = a[6] - '0';
-            const char* eq = strchr(a, '=');
-            if (idx >= 0 && idx < NUM_DEVICES && eq) {
-                g_chan[idx].program = atoi(eq + 1);
-                if (g_chan[idx].program < 0) g_chan[idx].program = 0;
-                if (g_chan[idx].program > 127) g_chan[idx].program = 127;
-            } else {
-                usage(argv[0]); return 1;
-            }
-        } else if (starts_with(a, "--bank")) {
-            // --bankN=#
-            int idx = a[6] - '0';
-            const char* eq = strchr(a, '=');
-            if (idx >= 0 && idx < NUM_DEVICES && eq) {
-                g_chan[idx].bank = atoi(eq + 1);
-                if (g_chan[idx].bank < 0) g_chan[idx].bank = 0;
-            } else {
-                usage(argv[0]); return 1;
-            }
         } else if (starts_with(a, "--driver=")) {
             snprintf(driver_opt, sizeof(driver_opt), "%s", a + 9); // wasapi|dsound|winmm
         } else if (starts_with(a, "COM")) {
-            if (com_count < MAX_COM_PORTS) {
-                snprintf(com_list[com_count++], sizeof(com_list[0]), "%s", a);
-            }
+            snprintf(com_port, sizeof(com_port), "%s", a);
         } else {
-            usage(argv[0]); return 1;
+            usage(argv[0]);
+            return 1;
         }
     }
-    uint32_t banks[] = {0, 0, 0, 0, 0, 0, 128, 128};
-    uint32_t programs[] = {2, 2, 0, 2, 5, 6, 0, 1};
+
+    // Optional: baked-in banks/programs per logical device
+
+    // uint32_t banks[] = {0, 0, 0, 0, 0, 0, 128, 128};
+    // uint32_t programs[] = {2, 2, 0, 2, 5, 6, 0, 1};
 
     // uint32_t banks[] = {0, 0, 128, 0, 0, 128, 0, 0};
     // uint32_t programs[] = {4, 1, 0, 0, 1, 16, 0, 82};
 
-    // uint32_t banks[] = {0, 0, 0, 0, 0, 0, 128, 128};
-    // uint32_t programs[] = {2, 104, 0, 1, 2, 6, 0, 1};
-    
+    uint32_t banks[] = {0, 0, 0, 0, 0, 0, 128, 128};
+    uint32_t programs[] = {2, 104, 0, 1, 2, 6, 0, 1};
+
     for (int i = 0; i < NUM_DEVICES; i++) {
         g_chan[i].program = programs[i];
         g_chan[i].bank = banks[i];
-    }
-
-    if (com_count == 0) {
-        // Default to COM1..COM8
-        for (int i = 0; i < NUM_DEVICES; ++i) {
-            snprintf(com_list[com_count++], sizeof(com_list[0]), "COM%d", i + 1);
-        }
-    } else if (com_count != NUM_DEVICES) {
-        fprintf(stderr, "[WARN] You provided %d COM ports; device_id expects 8. Proceeding anyway.\n", com_count);
     }
 
     SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
@@ -356,37 +309,58 @@ int main(int argc, char** argv) {
         return 1;
     }
 
-    // Start serial threads
-    HANDLE threads[MAX_COM_PORTS] = {0};
-    SerialThreadArgs* args[MAX_COM_PORTS] = {0};
-
-    for (int i = 0; i < com_count; ++i) {
-        args[i] = (SerialThreadArgs*)calloc(1, sizeof(SerialThreadArgs));
-        snprintf(args[i]->port_name, sizeof(args[i]->port_name), "%s", com_list[i]);
-        threads[i] = CreateThread(NULL, 0, serial_thread_proc, args[i], 0, NULL);
-        if (!threads[i]) {
-            fprintf(stderr, "[ERROR] Could not start thread for %s\n", com_list[i]);
-        } else {
-            fprintf(stdout, "[INFO] Listening on %s\n", com_list[i]);
-        }
+    // Open single COM port
+    HANDLE h = open_com_port(com_port);
+    if (h == INVALID_HANDLE_VALUE) {
+        fprintf(stderr, "[FATAL] Could not open %s\n", com_port);
+        fluidsynth_shutdown();
+        return 1;
     }
 
+    fprintf(stdout, "[INFO] Listening on %s\n", com_port);
     fprintf(stdout, "[INFO] Running. Press Ctrl+C to exit.\n");
 
-    // Wait until Ctrl+C
+    uint8_t pkt[2]; // payload: [0]=device_id, [1]=mask
+
     while (g_running) {
-        Sleep(100);
-    }
-
-    // Join threads
-    for (int i = 0; i < com_count; ++i) {
-        if (threads[i]) {
-            WaitForSingleObject(threads[i], 2000);
-            CloseHandle(threads[i]);
+        // Read framed packet: FE ED <device_id> <mask>
+        if (!read_framed_packet(h, pkt)) {
+            // likely a timeout or transient error — keep going while running
+            continue;
         }
-        if (args[i]) free(args[i]);
+
+        int device_id = pkt[0];
+        uint8_t new_mask = pkt[1];
+
+        if (device_id < 0 || device_id >= NUM_DEVICES) {
+            // invalid packet, ignore
+            continue;
+        }
+
+        int midi_chan = device_id;
+        Device* dev = devices[device_id];
+
+        uint8_t diff = new_mask ^ dev->old_mask;
+        for (uint8_t sensor_id = 0; sensor_id < SENSORS_PER_DEVICE; sensor_id++) {
+            uint8_t pad_mask = (uint8_t)(1U << sensor_id);
+            if (diff & pad_mask) {
+                bool state_on = (new_mask & pad_mask) ? true : false;
+                Note* note = dev->notes[sensor_id];
+                if (state_on) {
+                    // note on
+                    fs_note_on(midi_chan, note->pitch, note->velocity + dev->velocity_offset);
+                } else {
+                    // note off
+                    if (note->holdable) {
+                        fs_note_off(midi_chan, note->pitch);
+                    }
+                }
+            }
+        }
+        dev->old_mask = new_mask;
     }
 
+    CloseHandle(h);
     fluidsynth_shutdown();
     fprintf(stdout, "[INFO] Clean exit.\n");
     return 0;

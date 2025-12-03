@@ -71,8 +71,8 @@ void NRF24L01_RxInit(NRF24L01_HandleTypeDef *h, uint8_t Channel, uint8_t DataRat
     NRF24L01_SetRFTxOutputPower(h, NRF24L01_PWR_0DBM, Timeout);
 
     NRF24L01_SetCRCLength(h, 1, Timeout);
-    NRF24L01_SetAutoACK(h, NRF24L01_AUTO_ACK_ALL, NRF24L01_ENABLE, Timeout);
-    NRF24L01_EnableRxAddress(h, NRF24L01_RX_ADDRESS_ALL, Timeout);
+    NRF24L01_SetAutoACK(h, NRF24L01_AUTO_ACK_BEN, NRF24L01_ENABLE, Timeout);
+    NRF24L01_EnableRxAddress(h, NRF24L01_RX_ADDRESS_BEN, Timeout);
     NRF24L01_SetAddressWidths(h, NRF24L01_ADDRESS_WIDTH, Timeout);
     NRF24L01_AutoRetransmitCount(h, 3, Timeout);
     NRF24L01_AutoRetransmitDelay(h, 250, Timeout);

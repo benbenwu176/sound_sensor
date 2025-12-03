@@ -92,7 +92,9 @@ typedef enum {
     NRF24L01_RX_ADDRESS_P3 = 0x08,
     NRF24L01_RX_ADDRESS_P4 = 0x10,
     NRF24L01_RX_ADDRESS_P5 = 0x20,
-    NRF24L01_RX_ADDRESS_ALL = 0x3F
+    NRF24L01_RX_ADDRESS_ALL = 0x3F,
+		NRF24L01_RX_ADDRESS_BEN = 0x0F
+
 } NRF24L01_RxAddTypeDef;
 
 void NRF24L01_EnableRxAddress(NRF24L01_HandleTypeDef *h, NRF24L01_RxAddTypeDef RxAddress, uint16_t Timeout);
@@ -129,7 +131,8 @@ typedef enum {
     NRF24L01_AUTO_ACK_P3   = 0x08,
     NRF24L01_AUTO_ACK_P4   = 0x10,
     NRF24L01_AUTO_ACK_P5   = 0x20,
-    NRF24L01_AUTO_ACK_ALL  = 0x3F
+    NRF24L01_AUTO_ACK_ALL  = 0x3F,
+		NRF24L01_AUTO_ACK_BEN  = 0x0F
 } NRF24L01_AutoACKTypeDef;
 
 void NRF24L01_SetRxPayloadWidths(NRF24L01_HandleTypeDef *h, uint8_t Width, uint16_t Timeout);
@@ -201,7 +204,9 @@ uint8_t NRF24L01_GetStatus(NRF24L01_HandleTypeDef *h, uint16_t Timeout);
 #define NRF24L01_ARC_MASK_RST            0xF0
 #define NRF24L01_ARD_BIT_MASK_RST        0x0F
 #define NRF24L01_CRCO_MASK_RST           0xFB
+#define NRF24L01_RX_DR_MASK              0x40
 #define NRF24L01_TX_DS_MASK              0x20
+#define NRF24L01_MAX_RT_MASK             0x10
 
 /* Default register values used by Reset() (match original defaults) */
 #define NRF24L01_REG_DEF_CONFIG          0x08

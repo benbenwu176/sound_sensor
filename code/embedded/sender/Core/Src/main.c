@@ -50,13 +50,14 @@
 #define MPR121_AFE_CFG1 						0b00011000 // 24uA
 #define MPR121_AFE_CFG2							0b00100001 // CDT 0.5us, ESI 2ms
 
-#define MPR121_TOUCH_THR_DEFAULT 		0x20 // TODO: fine-tune
-#define MPR121_RELEASE_THR_DEFAULT 	0x1D // TODO: fine-tune
+#define MPR121_TOUCH_THR_DEFAULT 		0x28 // TODO: fine-tune
+#define MPR121_RELEASE_THR_DEFAULT 	0x26 // TODO: fine-tune
 #define MPR121_DEBOUNCE							0x11 // TODO: fine-tune
 #define MPR121_RUN_MODE							0x86 // TODO: fine-tune
 
 // Sensor ID mask
 volatile uint8_t g_mpr_irq_pending = 0;
+volatile uint8_t g_nrf_irq_pending = 0;
 
 /* USER CODE END PD */
 
@@ -189,7 +190,12 @@ int main(void)
 
   // Initalize nRF24
   uint8_t TxAddress1[5] = {0xB3, 0xB4, 0xB5, 0xB6, DEVICE_ID};
-	NRF24L01_TxInit(70, NRF24L01_DATA_RATE_2MBPS, 2000);
+  if (DEVICE_ID < 4) {
+  	NRF24L01_TxInit(70, NRF24L01_DATA_RATE_2MBPS, 2000);
+  } else {
+  	NRF24L01_TxInit(85, NRF24L01_DATA_RATE_2MBPS, 2000);
+  }
+
 	NRF24L01_SetTxAddress(TxAddress1, 2000);
 
   // Turn LED off
@@ -214,6 +220,11 @@ int main(void)
   		TxBuffer[0] = DEVICE_ID;
   		TxBuffer[1] = mask;
   		NRF24L01_TxTransmit(TxBuffer, 2000);
+  	}
+
+  	if (g_nrf_irq_pending) {
+  		g_nrf_irq_pending = 0;
+  		NRF24L01_TxIRQHandle(2000);
   	}
   }
   /* USER CODE END 3 */

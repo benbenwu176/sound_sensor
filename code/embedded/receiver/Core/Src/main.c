@@ -39,7 +39,7 @@
 /* Private define ------------------------------------------------------------*/
 /* USER CODE BEGIN PD */
 
-#define PAYLOAD_LENGTH 2
+#define PAYLOAD_LENGTH       2
 
 // GPIO Pins
 #define NRFA_CE_GPIO_PORT 	GPIOB
@@ -58,6 +58,10 @@
 
 #define NRF_FIFO_RX_EMPTY_BIT  (1U << 0)
 
+/* USB framing */
+#define USB_FRAME_LEN        4       // 0xFE, 0xED, payload[0], payload[1]
+#define USB_QUEUE_CAPACITY   64      // number of frames buffered
+
 /* USER CODE END PD */
 
 /* Private macro -------------------------------------------------------------*/
@@ -74,6 +78,67 @@ extern USBD_HandleTypeDef hUsbDeviceFS;
 
 NRF24L01_HandleTypeDef nrf_rx_A;
 NRF24L01_HandleTypeDef nrf_rx_B;
+
+volatile uint8_t nrfA_pending = 0;
+volatile uint8_t nrfB_pending = 0;
+
+/* RX buffers from radios */
+uint8_t rx_pipe_A = 0;
+uint8_t rx_pipe_B = 0;
+
+uint8_t rx_buffer_A[PAYLOAD_LENGTH] = {0, };
+uint8_t rx_buffer_B[PAYLOAD_LENGTH] = {0, };
+
+/* ---- USB packet queue (ring buffer of framed packets) ---- */
+
+typedef struct {
+	uint8_t data[USB_FRAME_LEN];
+} UsbFrame;
+
+typedef struct {
+	uint16_t head;  // next write
+	uint16_t tail;  // next read
+	UsbFrame buf[USB_QUEUE_CAPACITY];
+} UsbQueue;
+
+static UsbQueue g_usb_queue = {0};
+
+static inline int usbq_is_empty(const UsbQueue *q) {
+	return (q->head == q->tail);
+}
+
+static inline int usbq_is_full(const UsbQueue *q) {
+	return ((q->head + 1U) % USB_QUEUE_CAPACITY) == q->tail;
+}
+
+/* push a frame; returns 1 on success, 0 if full */
+static int usbq_push(UsbQueue *q, const uint8_t *data, uint8_t len) {
+	if (len > USB_FRAME_LEN) {
+		return 0;
+	}
+	if (usbq_is_full(q)) {
+		/* queue overflow -> drop frame */
+		return 0;
+	}
+
+	uint16_t head = q->head;
+	for (uint8_t i = 0; i < len; i++) {
+		q->buf[head].data[i] = data[i];
+	}
+	q->head = (uint16_t)((head + 1U) % USB_QUEUE_CAPACITY);
+	return 1;
+}
+
+/* pop a frame; returns 1 on success, 0 if empty */
+static int usbq_pop(UsbQueue *q, UsbFrame *out) {
+	if (usbq_is_empty(q)) {
+		return 0;
+	}
+	uint16_t tail = q->tail;
+	*out = q->buf[tail];  // struct copy, only 4 bytes
+	q->tail = (uint16_t)((tail + 1U) % USB_QUEUE_CAPACITY);
+	return 1;
+}
 
 /* USER CODE END PV */
 
@@ -97,29 +162,19 @@ static void usb_wait_configured(void) {
 	}
 }
 
+/* This still blocks until the packet is handed to the USB stack.
+ * Now we call it from the main loop using queued frames instead of
+ * directly from the radio handlers.
+ */
 static void send_bytes(const uint8_t *buf, uint16_t len) {
 	while (CDC_Transmit_FS((uint8_t *) buf, len) == USBD_BUSY);
 }
-
-volatile uint8_t nrfA_pending = 0;
-volatile uint8_t nrfB_pending = 0;
-
-char usb_buffer_A[32] = {0};
-char usb_buffer_B[32] = {0};
-
-uint8_t rx_pipe_A = 0;
-uint8_t rx_pipe_B = 0;
-
-uint8_t rx_buffer_A[PAYLOAD_LENGTH] = {0, };
-uint8_t rx_buffer_B[PAYLOAD_LENGTH] = {0, };
 
 void HAL_GPIO_EXTI_Callback(uint16_t GPIO_Pin)
 {
 	if (GPIO_Pin == nrf_rx_A.IRQ_GPIO_PIN) {
 		nrfA_pending = 1;
-	}
-
-	if (GPIO_Pin == nrf_rx_B.IRQ_GPIO_PIN) {
+	} else if (GPIO_Pin == nrf_rx_B.IRQ_GPIO_PIN) {
 		nrfB_pending = 1;
 	}
 }
@@ -188,33 +243,28 @@ int main(void)
   NRF24L01_SetRxPayloadWidths(&nrf_rx_B, PAYLOAD_LENGTH, 2000);
 
   // Radios
-  uint8_t RxAddress0_A[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0xFF};
-  uint8_t RxAddress1_A[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x00};
-  uint8_t RxAddress2_A = 0x01;
-  uint8_t RxAddress3_A = 0x02;
-  uint8_t RxAddress4_A = 0x03;
+  uint8_t RxAddress0_A[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x00};
+  uint8_t RxAddress1_A[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x01};
+  uint8_t RxAddress2_A = 0x02;
+  uint8_t RxAddress3_A = 0x03;
 
-  uint8_t RxAddress0_B[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0xFF};
-	uint8_t RxAddress1_B[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x04};
-	uint8_t RxAddress2_B = 0x05;
-	uint8_t RxAddress3_B = 0x06;
-	uint8_t RxAddress4_B = 0x07;
+  uint8_t RxAddress0_B[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x04};
+  uint8_t RxAddress1_B[5] = {0xB3, 0xB4, 0xB5, 0xB6, 0x05};
+  uint8_t RxAddress2_B = 0x06;
+  uint8_t RxAddress3_B = 0x07;
 
+  NRF24L01_RxInit(&nrf_rx_A, 70, NRF24L01_DATA_RATE_2MBPS, 2000);
+  NRF24L01_RxInit(&nrf_rx_B, 85, NRF24L01_DATA_RATE_2MBPS, 2000);
 
-	NRF24L01_RxInit(&nrf_rx_A, 70, NRF24L01_DATA_RATE_2MBPS, 2000);
-	NRF24L01_RxInit(&nrf_rx_B, 70, NRF24L01_DATA_RATE_2MBPS, 2000);
+  NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P0, RxAddress0_A, 2000);
+  NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P1, RxAddress1_A, 2000);
+  NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P2, &RxAddress2_A, 2000);
+  NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P3, &RxAddress3_A, 2000);
 
-	NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P0, RxAddress0_A, 2000);
-	NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P1, RxAddress1_A, 2000);
-	NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P2, &RxAddress2_A, 2000);
-	NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P3, &RxAddress3_A, 2000);
-	NRF24L01_SetRxAddress(&nrf_rx_A, NRF24L01_RX_ADDRESS_P4, &RxAddress4_A, 2000);
-
-	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P0, RxAddress0_B, 2000);
-	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P1, RxAddress1_B, 2000);
-	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P2, &RxAddress2_B, 2000);
-	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P3, &RxAddress3_B, 2000);
-	NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P4, &RxAddress4_B, 2000);
+  NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P0, RxAddress0_B, 2000);
+  NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P1, RxAddress1_B, 2000);
+  NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P2, &RxAddress2_B, 2000);
+  NRF24L01_SetRxAddress(&nrf_rx_B, NRF24L01_RX_ADDRESS_P3, &RxAddress3_B, 2000);
 
   /* USER CODE END 2 */
 
@@ -224,40 +274,63 @@ int main(void)
     /* USER CODE END WHILE */
 
     /* USER CODE BEGIN 3 */
-//  	if (nrfA_pending) {
-//  		nrfA_pending = 0;
-//  		NRF24L01_RxReceive(&nrf_rx_A, rx_buffer_A, &rx_pipe_A, 2000);
-//			memcpy(usb_buffer_A, rx_buffer_A, PAYLOAD_LENGTH);
-//			send_bytes(usb_buffer_A, PAYLOAD_LENGTH);
-//  	}
-//  	if (nrfB_pending) {
-//  		nrfB_pending = 0;
-//  		NRF24L01_RxReceive(&nrf_rx_B, rx_buffer_B, &rx_pipe_B, 2000);
-//  		memcpy(usb_buffer_B, rx_buffer_B, PAYLOAD_LENGTH);
-//  		send_bytes(usb_buffer_B, PAYLOAD_LENGTH);
-//  	}
 
-  	if (nrfA_pending) {
-			nrfA_pending = 0;
+    /* ---- Handle radio A IRQ ---- */
+    if (nrfA_pending) {
+    	nrfA_pending = 0;
 
-			/* read until RX FIFO is empty */
-			while ((NRF24L01_GetFIFOStatus(&nrf_rx_A, 200) & NRF_FIFO_RX_EMPTY_BIT) == 0) {
-				NRF24L01_RxReceive(&nrf_rx_A, rx_buffer_A, &rx_pipe_A, 200);
-				memcpy(usb_buffer_A, rx_buffer_A, PAYLOAD_LENGTH);
-				send_bytes(usb_buffer_A, PAYLOAD_LENGTH);
-			}
-		}
+    	/* Drain RX FIFO and enqueue framed USB packets */
+    	while ((NRF24L01_GetFIFOStatus(&nrf_rx_A, 200) & NRF_FIFO_RX_EMPTY_BIT) == 0) {
+    		NRF24L01_RxReceive(&nrf_rx_A, rx_buffer_A, &rx_pipe_A, 200);
 
-			/* if radio B signalled an IRQ, drain all queued payloads */
-		if (nrfB_pending) {
-			nrfB_pending = 0;
+    		uint8_t frame[USB_FRAME_LEN];
+    		frame[0] = 0xFE;                 // sync byte 1
+    		frame[1] = 0xED;                 // sync byte 2
+    		frame[2] = rx_buffer_A[0];       // payload byte 0 (e.g. device_id)
+    		frame[3] = rx_buffer_A[1];       // payload byte 1 (e.g. mask)
 
-			while ((NRF24L01_GetFIFOStatus(&nrf_rx_B, 200) & NRF_FIFO_RX_EMPTY_BIT) == 0) {
-				NRF24L01_RxReceive(&nrf_rx_B, rx_buffer_B, &rx_pipe_B, 200);
-				memcpy(usb_buffer_B, rx_buffer_B, PAYLOAD_LENGTH);
-				send_bytes(usb_buffer_B, PAYLOAD_LENGTH);
-			}
-		}
+    		(void)usbq_push(&g_usb_queue, frame, USB_FRAME_LEN);
+    	}
+    	/* If your nRF driver does NOT clear RX_DR in RxReceive,
+    	 * you should explicitly clear it here by writing STATUS.
+    	 */
+    	// uint8_t status = NRF24L01_GetStatus(&nrf_rx_A, 200);
+    	// if (status & NRF24L01_RX_DR_MASK) {
+    	// 	NRF24L01_WriteRegister(&nrf_rx_A,
+    	// 	                        NRF24L01_REG_STATUS,
+    	// 	                        NRF24L01_RX_DR_MASK,
+    	// 	                        200);
+    	// }
+    }
+
+    /* ---- Handle radio B IRQ ---- */
+    if (nrfB_pending) {
+    	nrfB_pending = 0;
+
+    	while ((NRF24L01_GetFIFOStatus(&nrf_rx_B, 200) & NRF_FIFO_RX_EMPTY_BIT) == 0) {
+    		NRF24L01_RxReceive(&nrf_rx_B, rx_buffer_B, &rx_pipe_B, 200);
+
+    		uint8_t frame[USB_FRAME_LEN];
+    		frame[0] = 0xFE;
+    		frame[1] = 0xED;
+    		frame[2] = rx_buffer_B[0];
+    		frame[3] = rx_buffer_B[1];
+
+    		(void)usbq_push(&g_usb_queue, frame, USB_FRAME_LEN);
+    	}
+    	// Same RX_DR comment as above if needed.
+    }
+
+    /* ---- Flush USB queue ---- */
+    while (!usbq_is_empty(&g_usb_queue)) {
+    	UsbFrame out;
+    	if (!usbq_pop(&g_usb_queue, &out)) {
+    		break;
+    	}
+    	/* This blocks until the USB stack accepts the packet */
+    	send_bytes(out.data, USB_FRAME_LEN);
+    }
+
   }
 
   /* USER CODE END 3 */

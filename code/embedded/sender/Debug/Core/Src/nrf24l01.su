@@ -32,4 +32,4 @@
 ../Core/Src/nrf24l01.c:637:6:NRF24L01_SetRFTxOutputPower	24	static
 ../Core/Src/nrf24l01.c:650:6:NRF24L01_SetRFAirDataRate	24	static
 ../Core/Src/nrf24l01.c:680:6:NRF24L01_TxIRQHandle	24	static
-../Core/Src/nrf24l01.c:703:9:NRF24L01_GetStatus	32	static
+../Core/Src/nrf24l01.c:706:9:NRF24L01_GetStatus	32	static

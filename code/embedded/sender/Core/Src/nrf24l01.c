@@ -681,20 +681,23 @@ void NRF24L01_TxIRQHandle(uint16_t Timeout)
 {
 	
 	/* ------------ Read Status Register ------------ */
-	uint8_t txDataSent = NRF24L01_GetStatus(Timeout) & NRF24L01_TX_DS_MASK;
+	uint8_t status = NRF24L01_GetStatus(Timeout);
 	
 	/* ------------- Check Data Sent bit ------------ */
 	// __NRF24L01_MASK_BIT(txDataSent, NRF24L01_TX_DS_MASK); // __CHECK_BIT(txDataSent, NRF24L01_TX_DS_BIT)
 	
-	if(txDataSent)
+	if(status & NRF24L01_TX_DS_MASK)
 	{
 		// TX_DS
 		NRF24L01_ClearTxDS(Timeout);
 	}
-	else
+	else if (status & NRF24L01_MAX_RT_MASK)
 	{
 		// MAX_RT
 		NRF24L01_ClearMaxRT(Timeout);
+		NRF24L01_FlushTxFIFO(Timeout);
+	} else {
+
 	}
 	
 }
