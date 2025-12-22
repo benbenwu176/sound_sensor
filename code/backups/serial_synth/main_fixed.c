@@ -1,4 +1,23 @@
 #include "main.h"
+/* ----- Runtime device table and section applier ----- */
+static Device g_devices[NUM_DEVICES];
+Device* devices[NUM_DEVICES];
+
+static void apply_section_config(const SectionConfig* cfg) {
+    for (int i = 0; i < NUM_DEVICES; ++i) {
+        g_devices[i].velocity_offset = cfg->offsets[i];
+        g_devices[i].old_mask = 0;
+        for (int s = 0; s < SENSORS_PER_DEVICE; ++s) {
+            g_devices[i].notes[s] = &cfg->notes[i][s];
+        }
+        devices[i] = &g_devices[i];
+
+        /* Also set per-channel bank/program so FluidSynth selects the right presets */
+        g_chan[i].bank    = (int)cfg->banks[i];
+        g_chan[i].program = (int)cfg->programs[i];
+    }
+}
+
 
 /* ----- SERIAL INPUT ----- */
 
@@ -239,15 +258,16 @@ static bool starts_with(const char* s, const char* pfx) {
 static void usage(const char* exe) {
     fprintf(stderr,
         "Usage:\n"
-        "  %s [COMx] [--sf2=<path>] [--driver=wasapi|dsound|winmm]\n"
+        "  %s [COMx] [--sf2=<path>] [--driver=wasapi|dsound|winmm] [--section=1|2|3]\n"
         "\n"
         "Examples:\n"
-        "  %s COM5 --sf2=usb.sf2\n"
-        "  %s --sf2=usb.sf2             (defaults to COM1)\n"
+        "  %s COM5 --sf2=usb.sf2 --section=2\n"
+        "  %s --sf2=boop_bap.sf2 --section=3\n"
         "\n"
         "Notes:\n"
         " - device_id (0..7) is used as MIDI channel\n"
-        " - --sf2 sets a single soundfont for all channels\n",
+        " - --sf2 sets a single soundfont for all channels\n"
+        " - --section picks which prebuilt music section to load\n",
         exe, exe, exe);
 }
 
@@ -273,7 +293,9 @@ int main(int argc, char** argv) {
 
     char driver_opt[32] = "wasapi";
 
-    // Parse args: COM, --sf2, --driver only
+    
+    int section = 1; // default section
+// Parse args: COM, --sf2, --driver only
     for (int i = 1; i < argc; ++i) {
         const char* a = argv[i];
 
@@ -291,23 +313,19 @@ int main(int argc, char** argv) {
             return 1;
         }
     }
-
-    // Section 1
-    uint32_t banks[] = {0, 0, 0, 0, 0, 0, 128, 128};
-    uint32_t programs[] = {2, 2, 0, 2, 5, 6, 0, 1};
-
-    // Section 2
-    // uint32_t banks[] = {0, 0, 128, 0, 0, 128, 0, 0};
-    // uint32_t programs[] = {4, 104, 0, 0, 1, 16, 0, 82};
-
-    // Section 3
-    // uint32_t banks[] = {0, 0, 0, 0, 0, 0, 128, 128};
-    // uint32_t programs[] = {2, 104, 0, 1, 2, 6, 0, 1};
-
-    for (int i = 0; i < NUM_DEVICES; i++) {
-        g_chan[i].program = programs[i];
-        g_chan[i].bank = banks[i];
+    const SectionConfig* cfg = NULL;
+    switch (section) {
+        case 1: cfg = &Section_1; break;
+        case 2: cfg = &Section_2; break;
+        case 3: cfg = &Section_3; break;
+        default:
+            fprintf(stderr, "[ERROR] Invalid --section=%d (must be 1,2,3)\n", section);
+            return 1;
     }
+    apply_section_config(cfg);
+
+
+
 
     SetConsoleCtrlHandler(ConsoleCtrlHandler, TRUE);
 
@@ -354,7 +372,7 @@ int main(int argc, char** argv) {
             uint8_t pad_mask = (uint8_t)(1U << sensor_id);
             if (diff & pad_mask) {
                 bool state_on = (new_mask & pad_mask) ? true : false;
-                Note* note = dev->notes[sensor_id];
+                const Note* note = dev->notes[sensor_id];
                 if (state_on) {
                     // note on
                     fs_note_on(midi_chan, note->pitch, note->velocity + dev->velocity_offset);

@@ -236,7 +236,7 @@ static bool MPR121_Init(void) {
 		// Set activation/release threshold
 		if (MPR121_Write8(treg, MPR121_TOUCH_THR_DEFAULT) != HAL_OK) {return false;}
  8000242:	79bb      	ldrb	r3, [r7, #6]
- 8000244:	2128      	movs	r1, #40	@ 0x28
+ 8000244:	2122      	movs	r1, #34	@ 0x22
  8000246:	4618      	mov	r0, r3
  8000248:	f7ff ff80 	bl	800014c <MPR121_Write8>
  800024c:	4603      	mov	r3, r0
@@ -248,7 +248,7 @@ static bool MPR121_Init(void) {
  8000256:	79bb      	ldrb	r3, [r7, #6]
  8000258:	3301      	adds	r3, #1
  800025a:	b2db      	uxtb	r3, r3
- 800025c:	2126      	movs	r1, #38	@ 0x26
+ 800025c:	2120      	movs	r1, #32
  800025e:	4618      	mov	r0, r3
  8000260:	f7ff ff74 	bl	800014c <MPR121_Write8>
  8000264:	4603      	mov	r3, r0
@@ -412,7 +412,7 @@ int main(void)
  8000342:	f001 fa15 	bl	8001770 <HAL_GPIO_WritePin>
   		TxBuffer[0] = DEVICE_ID;
  8000346:	4b0f      	ldr	r3, [pc, #60]	@ (8000384 <main+0xdc>)
- 8000348:	2207      	movs	r2, #7
+ 8000348:	2206      	movs	r2, #6
  800034a:	701a      	strb	r2, [r3, #0]
   		TxBuffer[1] = mask;
  800034c:	4a0d      	ldr	r2, [pc, #52]	@ (8000384 <main+0xdc>)

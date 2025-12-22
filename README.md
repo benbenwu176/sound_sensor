@@ -37,6 +37,10 @@ capacitive touch sensors, wireless communication to a receiving hub, and FluidSy
         * `.\build\Release\serial_synth.exe COM6 COM7 COM8 COM9 COM10 COM11 COM12 --sf2=basic.sf2 --bank0=0 --prog0=61 --bank1=0 --prog1=61 --bank2=0 --prog2=0  --bank3=0 --prog3=0  --bank4=0 --prog4=0 --bank5=0 --prog5=32 --bank6=128 --prog6=0 --bank7=128 --prog7=0`
         * `.\build\Release\serial_synth.exe COM5 --sf2=boop_bap.sf2`
 
+.\build\Release\serial_synth.exe COM5 --sf2=boop_bap.sf2 --section=1
+.\build\Release\serial_synth.exe COM5 --sf2=usb.sf2 --section=2
+.\build\Release\serial_synth.exe COM5 --sf2=combined.sf2 --section=3
+
 * Example when a simple change is made (rebuild, run):
     * `cmake --build build --config Release`
     * `.\build\Release\serial_synth.exe --sf2=basic.sf2`

@@ -50,8 +50,8 @@
 #define MPR121_AFE_CFG1 						0b00011000 // 24uA
 #define MPR121_AFE_CFG2							0b00100001 // CDT 0.5us, ESI 2ms
 
-#define MPR121_TOUCH_THR_DEFAULT 		0x28 // TODO: fine-tune
-#define MPR121_RELEASE_THR_DEFAULT 	0x26 // TODO: fine-tune
+#define MPR121_TOUCH_THR_DEFAULT 		0x22 // TODO: fine-tune 28
+#define MPR121_RELEASE_THR_DEFAULT 	0x20 // TODO: fine-tune 26
 #define MPR121_DEBOUNCE							0x11 // TODO: fine-tune
 #define MPR121_RUN_MODE							0x86 // TODO: fine-tune
 
@@ -65,7 +65,7 @@ volatile uint8_t g_nrf_irq_pending = 0;
 /* USER CODE BEGIN PM */
 
 #ifndef DEVICE_ID
-#define DEVICE_ID 7
+#define DEVICE_ID 6
 #endif
 
 // Accommodate for 8 devices total
